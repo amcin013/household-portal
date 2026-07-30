@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Bills &amp; payments · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bills &amp; payments</h1>
+    <p>{{ count }} companies · about {{ total | money_short }} a month</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('money.import_sheet') }}">📥 Import</a>
+    <a class="btn" href="{{ url_for('money.export') }}">📤 Export</a>
+    <a class="btn btn-primary" href="{{ url_for('money.new_payee') }}">＋ Add company</a>
+  </div>
+</div>
+
+{% if grouped %}
+  {% for category, payees in grouped %}
+    <div class="card mb">
+      <div class="card-head">
+        <h2>{{ category }}</h2>
+        <span class="tiny muted">
+          {{ payees | sum(attribute='typical_amount') | money_short }}/mo
+        </span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Account</th>
+              <th>Due</th>
+              <th class="num">Typical</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payee in payees %}
+              <tr {{ 'style=opacity:.55' if not payee.active }}>
+                <td>
+                  <a href="{{ url_for('money.edit_payee', payee_id=payee.id) }}">
+                    <b>{{ payee.name }}</b>
+                  </a>
+                  {% if payee.autopay %}<span class="pill">auto</span>{% endif %}
+                  {% if not payee.active %}<span class="pill">inactive</span>{% endif %}
+                  {% if payee.place %}
+                    <div class="tiny muted">{{ payee.place.name }}</div>
+                  {% endif %}
+                </td>
+                <td class="tiny muted">
+                  {{ payee.account_hint or '—' }}
+                  {% if payee.phone %}<div>{{ payee.phone }}</div>{% endif %}
+                </td>
+                <td class="nowrap">the {{ payee.due_day }}</td>
+                <td class="num">{{ payee.typical_amount | money }}</td>
+                <td class="right nowrap" style="width:1%">
+                  {% if payee.pay_url %}
+                    <a class="btn btn-sm btn-primary" href="{{ payee.pay_url }}"
+                       target="_blank" rel="noopener">Pay ↗</a>
+                  {% endif %}
+                  {% if payee.login_url %}
+                    <a class="btn btn-sm" href="{{ payee.login_url }}"
+                       target="_blank" rel="noopener">Log in ↗</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <span class="e-icon">💵</span>
+    <p>No companies yet. Add TXU and Pflugerville Water, or bring in the spreadsheet you already keep.</p>
+    <div class="flex" style="justify-content:center">
+      <a class="btn btn-primary" href="{{ url_for('money.new_payee') }}">Add a company</a>
+      <a class="btn" href="{{ url_for('money.import_sheet') }}">Import a spreadsheet</a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Not on the list · {{ site_name }}{% endblock %}
+
+{% block anon_content %}
+<div style="min-height:100vh;display:grid;place-items:center;padding:1.5rem;background:var(--bg-soft)">
+  <div class="card" style="max-width:440px;text-align:center">
+    <div style="font-size:2.5rem">🔒</div>
+    <h1>{% if disabled %}That account is switched off{% else %}Not on the list{% endif %}</h1>
+    <p class="muted">
+      {% if disabled %}
+        <b>{{ email }}</b> used to have access but the account has been disabled.
+      {% else %}
+        <b>{{ email }}</b> is not a household account, so it cannot open the portal.
+      {% endif %}
+      Ask Allen to add you under Settings → People.
+    </p>
+    <a class="btn" href="{{ url_for('auth.login') }}">Try a different account</a>
+  </div>
+</div>
+{% endblock %}

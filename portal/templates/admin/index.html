@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Settings · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Settings</h1>
+</div>
+
+<div class="grid grid-3">
+  <a class="card" href="{{ url_for('admin.appearance') }}" style="text-decoration:none;color:inherit">
+    <div class="card-head"><h2>🎨 Appearance</h2></div>
+    <p class="tiny muted">
+      Theme, font, text size, and what the portal is called. Everyone can set a
+      personal look if you allow it.
+    </p>
+  </a>
+
+  {% if current_user.is_admin %}
+    <a class="card" href="{{ url_for('admin.people') }}" style="text-decoration:none;color:inherit">
+      <div class="card-head"><h2>👥 People</h2></div>
+      <p class="tiny muted">
+        {{ user_count }} account{{ 's' if user_count != 1 }}. Invite family, make
+        someone an admin, switch an account off.
+      </p>
+    </a>
+  {% endif %}
+
+  <a class="card" href="{{ url_for('admin.foods') }}" style="text-decoration:none;color:inherit">
+    <div class="card-head"><h2>🥗 Food data</h2></div>
+    <p class="tiny muted">
+      {{ food_count }} food{{ 's' if food_count != 1 }} with nutrition per 100 g.
+      Link these on recipes and the nutrition panel fills in.
+    </p>
+  </a>
+
+  <a class="card" href="{{ url_for('money.import_sheet') }}" style="text-decoration:none;color:inherit">
+    <div class="card-head"><h2>📥 Import &amp; export</h2></div>
+    <p class="tiny muted">
+      Bring in a spreadsheet, or take everything back out as .xlsx.
+    </p>
+  </a>
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h2>How this install is set up</h2></div>
+  <table class="data">
+    <tbody>
+      <tr>
+        <td>Sign-in</td>
+        <td>
+          {% if google_configured %}
+            <span class="pill pill-good">Google</span>
+          {% elif auth_mode == 'local' %}
+            <span class="pill pill-warn">Shared password</span>
+            <span class="tiny muted">— fine on the LAN, set up Google before exposing this to the internet</span>
+          {% else %}
+            <span class="pill pill-bad">Not configured</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr><td>Version</td><td class="tiny muted">{{ version }}</td></tr>
+      <tr>
+        <td>Weather</td>
+        <td class="tiny muted">NOAA / api.weather.gov — no key needed</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="tiny muted mt">
+    These come from the <code>.env</code> file on the server. Changing them
+    means editing that file and restarting the service.
+  </p>
+</div>
+{% endblock %}

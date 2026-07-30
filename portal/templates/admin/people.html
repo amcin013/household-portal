@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}People · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>People</h1>
+    <p>Who can open the portal.</p>
+  </div>
+</div>
+
+{% if not google_configured %}
+  <div class="alert-banner">
+    <span>ℹ️</span>
+    <span>
+      Google sign-in is not configured, so this list is not in use yet —
+      everyone shares the local password. The README covers setting up the
+      Google client.
+    </span>
+  </div>
+{% endif %}
+
+<div class="card mb">
+  <div class="card-head"><h2>Accounts</h2></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Person</th>
+          <th>Role</th>
+          <th>Last seen</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr {{ 'style=opacity:.5' if not user.is_active }}>
+            <td>
+              <div class="flex">
+                <span class="avatar">
+                  {% if user.avatar_url %}<img src="{{ user.avatar_url }}" alt="">
+                  {% else %}{{ user.initials }}{% endif %}
+                </span>
+                <span>
+                  <b>{{ user.display_name }}</b>
+                  {% if user.id == current_user.id %}<span class="pill">you</span>{% endif %}
+                  <div class="tiny muted">{{ user.email }}</div>
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="pill {{ 'pill-accent' if user.is_admin }}">
+                {{ 'admin' if user.is_admin else 'member' }}
+              </span>
+              {% if not user.is_active %}<span class="pill pill-bad">off</span>{% endif %}
+            </td>
+            <td class="tiny muted nowrap">
+              {{ user.last_seen_at | timeago if user.last_seen_at else 'never' }}
+            </td>
+            <td class="right nowrap" style="width:1%">
+              {% if user.id != current_user.id %}
+                <form method="post" action="{{ url_for('admin.update_person', user_id=user.id) }}"
+                      class="inline-form">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="action" value="toggle_role">
+                  <button class="btn btn-sm">
+                    {{ 'Make member' if user.is_admin else 'Make admin' }}
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('admin.update_person', user_id=user.id) }}"
+                      class="inline-form">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="action" value="toggle_active">
+                  <button class="btn btn-sm">{{ 'Switch on' if not user.is_active else 'Switch off' }}</button>
+                </form>
+                <form method="post" action="{{ url_for('admin.update_person', user_id=user.id) }}"
+                      class="inline-form" data-confirm="Remove {{ user.email }} completely?">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="action" value="delete">
+                  <button class="btn btn-sm btn-danger">Remove</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Invite someone</h2></div>
+    <p class="tiny muted">
+      Add their Google address here and they can sign in. Nothing is emailed —
+      just send them the link yourself.
+    </p>
+    <form method="post" action="{{ url_for('admin.invite') }}">
+      {{ csrf_field() }}
+      <div class="field-row">
+        <div class="field">
+          <label for="email">Google email</label>
+          <input type="email" id="email" name="email" required placeholder="name@gmail.com">
+        </div>
+        <div class="field">
+          <label for="name">Name (optional)</label>
+          <input type="text" id="name" name="name">
+        </div>
+        <div class="field" style="max-width:9rem">
+          <label for="role">Role</label>
+          <select id="role" name="role">
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary">Add</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Always allowed</h2></div>
+    <p class="tiny muted">
+      From <code>ALLOWED_EMAILS</code> in the server's <code>.env</code>. These
+      can sign in whether or not they appear above — handy for getting back in
+      if you lock yourself out.
+    </p>
+    {% if allowed %}
+      <ul class="list">
+        {% for email in allowed %}<li class="tiny">{{ email }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p class="tiny muted">None set.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h3>Members and admins</h3></div>
+  <p class="tiny muted">
+    Everyone who signs in can read everything and edit recipes, pages, links,
+    bills, and places — this is a household portal, not a permissions system.
+    Admins additionally manage people and the household appearance.
+  </p>
+</div>
+{% endblock %}

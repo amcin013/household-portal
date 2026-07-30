@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Forecast · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Forecast</h1>
+    <p>Where things land if the current pattern holds.</p>
+  </div>
+  <div class="page-actions">
+    {% for n in [6, 12, 24, 60] %}
+      <a class="btn btn-sm {{ 'btn-primary' if n == months }}"
+         href="{{ url_for('money.forecast', months=n) }}">{{ n }} mo</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="stats mb">
+  <div class="stat">
+    <div class="stat-label">Income</div>
+    <div class="stat-value">{{ data.income | money_short }}</div>
+    <div class="stat-note">per month</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Bills</div>
+    <div class="stat-value">{{ data.bills | money_short }}</div>
+    <div class="stat-note">companies</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Other out</div>
+    <div class="stat-value">{{ (data.expenses + data.transfers) | money_short }}</div>
+    <div class="stat-note">recurring + transfers</div>
+  </div>
+  <div class="stat {{ 'good' if data.monthly_net >= 0 else 'bad' }}">
+    <div class="stat-label">Net each month</div>
+    <div class="stat-value">{{ data.monthly_net | money_short }}</div>
+  </div>
+</div>
+
+{% if data.income == 0 %}
+  <div class="alert-banner">
+    <span>ℹ️</span>
+    <span>
+      No income recorded, so the forecast only counts money going out.
+      <a href="{{ url_for('money.recurring') }}">Add your pay under Recurring →</a>
+    </span>
+  </div>
+{% endif %}
+
+{% if data.runway_months is not none %}
+  <div class="alert-banner severe">
+    <span>⚠️</span>
+    <span>
+      More is going out than coming in. At this rate cash runs out in about
+      <b>{{ data.runway_months }} month{{ 's' if data.runway_months != 1 }}</b>.
+    </span>
+  </div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Projection</h2>
+      <span class="tiny muted">starting cash {{ data.starting_cash | money_short }}</span>
+    </div>
+
+    {% if data.rows %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th class="num">Cash</th>
+              <th class="num">Net worth</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data.rows %}
+              <tr>
+                <td>{{ row.period | month_label }}</td>
+                <td class="num" style="color:var({{ '--good' if row.cash >= 0 else '--bad' }})">
+                  {{ row.cash | money_short }}
+                </td>
+                <td class="num">{{ row.net_worth | money_short }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted tiny">Nothing to project yet.</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Net worth over time</h2></div>
+      {% if data.rows %}
+        {% set values = data.rows | map(attribute='net_worth') | list %}
+        {% set low = values | min %}
+        {% set high = values | max %}
+        {% set span = (high - low) or 1 %}
+        <div class="mini-bars" style="height:120px">
+          {% for row in data.rows %}
+            <div class="mb"
+                 style="height:{{ (((row.net_worth - low) / span) * 92 + 8) | round(1) }}%"
+                 title="{{ row.period | month_label }}: {{ row.net_worth | money_short }}"></div>
+          {% endfor %}
+        </div>
+        <div class="flex-between tiny muted mt">
+          <span>{{ data.rows[0].period | month_label }}</span>
+          <span>{{ data.rows[-1].period | month_label }}</span>
+        </div>
+        <p class="tiny muted mt">
+          {{ low | money_short }} → {{ high | money_short }} over {{ months }} months.
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>What actually happened</h2></div>
+      {% set totals = history | map(attribute='total') | list %}
+      {% if totals | sum %}
+        {% set peak = totals | max or 1 %}
+        <div class="mini-bars mb">
+          {% for row in history %}
+            <div class="mb" style="height:{{ ((row.total / peak) * 100) | round(1) }}%"
+                 title="{{ row.period | month_label }}: {{ row.total | money_short }}"></div>
+          {% endfor %}
+        </div>
+        <p class="tiny muted">
+          Bills over the last 12 months. Compare with the projection — if they
+          drift apart, the typical amounts need updating.
+        </p>
+      {% else %}
+        <p class="muted tiny">No history yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>How this is worked out</h3></div>
+      <p class="tiny muted">
+        Each month adds income, subtracts every active company bill at its
+        typical amount, subtracts recurring expenses, and moves transfers into
+        their account. Accounts then grow by their own annual rate. It is a
+        straight-line projection, not a promise — it is only as good as the
+        typical amounts you keep up to date.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

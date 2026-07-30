@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit ' + recipe.title if recipe else 'New recipe' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ 'Edit recipe' if recipe else 'New recipe' }}</h1></div>
+  {% if recipe %}
+    <div class="page-actions">
+      <a class="btn" href="{{ url_for('recipes.detail', slug=recipe.slug) }}">Cancel</a>
+    </div>
+  {% endif %}
+</div>
+
+<form method="post">
+  {{ csrf_field() }}
+
+  <div class="card mb">
+    <div class="field">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" required autofocus
+             value="{{ recipe.title if recipe else '' }}" placeholder="Green chile chicken casserole">
+    </div>
+
+    <div class="field">
+      <label for="description">Short description</label>
+      <textarea id="description" name="description" style="min-height:4rem"
+                placeholder="What it is, when you make it, who likes it.">{{ recipe.description or '' if recipe else '' }}</textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="servings">Makes</label>
+        <input type="number" id="servings" name="servings" min="1" max="200"
+               value="{{ recipe.servings if recipe else 4 }}">
+      </div>
+      <div class="field">
+        <label for="serving_noun">Called</label>
+        <input type="text" id="serving_noun" name="serving_noun"
+               value="{{ recipe.serving_noun if recipe else 'servings' }}"
+               placeholder="servings, cookies, jars">
+      </div>
+      <div class="field">
+        <label for="prep_minutes">Prep (min)</label>
+        <input type="number" id="prep_minutes" name="prep_minutes" min="0"
+               value="{{ recipe.prep_minutes or '' if recipe else '' }}">
+      </div>
+      <div class="field">
+        <label for="cook_minutes">Cook (min)</label>
+        <input type="number" id="cook_minutes" name="cook_minutes" min="0"
+               value="{{ recipe.cook_minutes or '' if recipe else '' }}">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="course">Course</label>
+        <input type="text" id="course" name="course" list="courseList"
+               value="{{ recipe.course or '' if recipe else '' }}" placeholder="Dinner">
+        <datalist id="courseList">
+          {% for c in ['Breakfast','Lunch','Dinner','Side','Dessert','Snack','Drink','Sauce','Bread'] %}
+            <option value="{{ c }}">
+          {% endfor %}
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="tags">Tags</label>
+        <input type="text" id="tags" name="tags"
+               value="{{ recipe.tags or '' if recipe else '' }}"
+               placeholder="comma, separated, tags">
+      </div>
+    </div>
+  </div>
+
+  {# ---------- ingredients ---------- #}
+  <div class="card mb">
+    <div class="card-head">
+      <h2>Ingredients</h2>
+      <span class="tiny muted">Fractions are fine — type <code>1 1/2</code> or <code>0.5</code></span>
+    </div>
+
+    <div class="rows" id="ingredientRows">
+      {% for ing in (recipe.ingredients if recipe else []) %}
+        {% if ing.heading %}
+          <div class="row-item is-heading">
+            <input type="hidden" name="ing_heading" value="1">
+            <input type="hidden" name="ing_quantity" value="">
+            <input type="hidden" name="ing_unit" value="">
+            <input type="hidden" name="ing_note" value="">
+            <input type="hidden" name="ing_food" value="">
+            <input type="text" name="ing_item" value="{{ ing.item }}"
+                   placeholder="Section heading" style="font-weight:700">
+            <button type="button" class="btn btn-sm btn-ghost" data-remove-row>✕</button>
+          </div>
+        {% else %}
+          <div class="row-item">
+            <input type="hidden" name="ing_heading" value="0">
+            <input type="text" name="ing_quantity" value="{{ ing.quantity | qty }}" placeholder="2">
+            <input type="text" name="ing_unit" value="{{ ing.unit or '' }}" placeholder="cups" list="unitList">
+            <input type="text" name="ing_item" value="{{ ing.item }}" placeholder="ingredient">
+            <input type="text" name="ing_note" value="{{ ing.note or '' }}" placeholder="note" class="row-note">
+            <select name="ing_food" title="Link for nutrition">
+              <option value="">—</option>
+              {% for food in foods %}
+                <option value="{{ food.id }}" {{ 'selected' if ing.food_id == food.id }}>{{ food.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-sm btn-ghost" data-remove-row>✕</button>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      {% if not recipe or not recipe.ingredients %}
+        {% for _ in range(4) %}
+          <div class="row-item">
+            <input type="hidden" name="ing_heading" value="0">
+            <input type="text" name="ing_quantity" placeholder="2">
+            <input type="text" name="ing_unit" placeholder="cups" list="unitList">
+            <input type="text" name="ing_item" placeholder="ingredient">
+            <input type="text" name="ing_note" placeholder="note" class="row-note">
+            <select name="ing_food" title="Link for nutrition">
+              <option value="">—</option>
+              {% for food in foods %}<option value="{{ food.id }}">{{ food.name }}</option>{% endfor %}
+            </select>
+            <button type="button" class="btn btn-sm btn-ghost" data-remove-row>✕</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <datalist id="unitList">
+      {% for u in ['cup','tbsp','tsp','oz','lb','g','kg','ml','l','clove','can','pinch','each'] %}
+        <option value="{{ u }}">
+      {% endfor %}
+    </datalist>
+
+    <div class="flex mt">
+      <button type="button" class="btn btn-sm" id="addRow">＋ Ingredient</button>
+      <button type="button" class="btn btn-sm" id="addHeading">＋ Section heading</button>
+    </div>
+
+    <template id="rowTemplate">
+      <div class="row-item">
+        <input type="hidden" name="ing_heading" value="0">
+        <input type="text" name="ing_quantity" placeholder="2">
+        <input type="text" name="ing_unit" placeholder="cups" list="unitList">
+        <input type="text" name="ing_item" placeholder="ingredient">
+        <input type="text" name="ing_note" placeholder="note" class="row-note">
+        <select name="ing_food" title="Link for nutrition">
+          <option value="">—</option>
+          {% for food in foods %}<option value="{{ food.id }}">{{ food.name }}</option>{% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-ghost" data-remove-row>✕</button>
+      </div>
+    </template>
+
+    <template id="headingTemplate">
+      <div class="row-item is-heading">
+        <input type="hidden" name="ing_heading" value="1">
+        <input type="hidden" name="ing_quantity" value="">
+        <input type="hidden" name="ing_unit" value="">
+        <input type="hidden" name="ing_note" value="">
+        <input type="hidden" name="ing_food" value="">
+        <input type="text" name="ing_item" placeholder="For the sauce" style="font-weight:700">
+        <button type="button" class="btn btn-sm btn-ghost" data-remove-row>✕</button>
+      </div>
+    </template>
+  </div>
+
+  {# ---------- method ---------- #}
+  <div class="card mb">
+    <div class="field">
+      <label for="instructions">Method</label>
+      <textarea id="instructions" name="instructions" class="tall"
+                placeholder="1. Heat the oven to 350°F.&#10;2. …">{{ recipe.instructions or '' if recipe else '' }}</textarea>
+      <div class="hint">Markdown works: <code>**bold**</code>, numbered lists, <code>## headings</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" style="min-height:5rem"
+                placeholder="Substitutions, who it's for, what to serve with it.">{{ recipe.notes or '' if recipe else '' }}</textarea>
+    </div>
+  </div>
+
+  <details class="disclose">
+    <summary>Source and picture</summary>
+    <div class="field-row">
+      <div class="field">
+        <label for="source">Source</label>
+        <input type="text" id="source" name="source"
+               value="{{ recipe.source or '' if recipe else '' }}" placeholder="Grandma, NYT Cooking…">
+      </div>
+      <div class="field">
+        <label for="source_url">Source link</label>
+        <input type="url" id="source_url" name="source_url"
+               value="{{ recipe.source_url or '' if recipe else '' }}">
+      </div>
+    </div>
+    <div class="field">
+      <label for="image_url">Picture URL</label>
+      <input type="url" id="image_url" name="image_url"
+             value="{{ recipe.image_url or '' if recipe else '' }}">
+    </div>
+  </details>
+
+  <div class="form-actions">
+    <button class="btn btn-primary">{{ 'Save changes' if recipe else 'Add recipe' }}</button>
+    <label class="check" style="margin:0">
+      <input type="checkbox" name="favorite" {{ 'checked' if recipe and recipe.favorite }}>
+      Favourite
+    </label>
+    <span class="spacer"></span>
+    {% if recipe %}
+      <a class="btn" href="{{ url_for('recipes.detail', slug=recipe.slug) }}">Cancel</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if recipe %}
+  <form method="post" action="{{ url_for('recipes.delete', slug=recipe.slug) }}" class="mt"
+        data-confirm="Delete “{{ recipe.title }}”? This cannot be undone.">
+    {{ csrf_field() }}
+    <button class="btn btn-danger btn-sm">Delete this recipe</button>
+  </form>
+{% endif %}
+{% endblock %}

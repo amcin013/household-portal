@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit ' + page.title if page else 'New page' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ 'Edit page' if page else 'New page' }}</h1>
+</div>
+
+<form method="post">
+  {{ csrf_field() }}
+
+  <div class="grid" style="grid-template-columns:1fr minmax(0,280px);align-items:start;gap:1.25rem">
+    <div class="card">
+      <div class="field-row">
+        <div class="field" style="max-width:5.5rem">
+          <label for="icon">Icon</label>
+          <input type="text" id="icon" name="icon" maxlength="4"
+                 value="{{ page.icon or '' if page else '' }}"
+                 style="text-align:center;font-size:1.2rem">
+        </div>
+        <div class="field">
+          <label for="title">Title</label>
+          <input type="text" id="title" name="title" required autofocus
+                 value="{{ page.title if page else prefill_title }}"
+                 placeholder="How to restart the Jellyfin server">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="body">Page</label>
+        <textarea id="body" name="body" class="tall"
+                  placeholder="Write it the way you would explain it to someone standing in the room.">{{ page.body or '' if page else '' }}</textarea>
+        <div class="hint">
+          Markdown: <code>## heading</code>, <code>- bullet</code>,
+          <code>1. step</code>, <code>**bold**</code>, <code>[link](url)</code>,
+          <code>| tables |</code>.
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="summary">Summary</label>
+        <input type="text" id="summary" name="summary"
+               value="{{ page.summary or '' if page else '' }}"
+               placeholder="One line — shown in lists. Left blank, it writes itself.">
+      </div>
+    </div>
+
+    <div>
+      <div class="card mb">
+        <div class="card-head"><h3>Filing</h3></div>
+
+        <div class="field">
+          <label for="category">Category</label>
+          <input type="text" id="category" name="category" list="catList"
+                 value="{{ page.category if page else 'How-to' }}">
+          <datalist id="catList">
+            {% for c in categories %}<option value="{{ c }}">{% endfor %}
+          </datalist>
+        </div>
+
+        <div class="field">
+          <label for="tags">Tags</label>
+          <input type="text" id="tags" name="tags"
+                 value="{{ page.tags or '' if page else '' }}"
+                 placeholder="comma, separated">
+        </div>
+
+        <div class="field" style="max-width:8rem">
+          <label for="sort_order">Order</label>
+          <input type="number" id="sort_order" name="sort_order"
+                 value="{{ page.sort_order if page else 0 }}">
+        </div>
+
+        <label class="check">
+          <input type="checkbox" name="pinned" {{ 'checked' if page and page.pinned }}>
+          Pin to the home page
+        </label>
+        <label class="check">
+          <input type="checkbox" name="is_essential" {{ 'checked' if page and page.is_essential }}>
+          Mark as essential
+        </label>
+        <div class="hint">
+          Essential pages appear in the Essentials section — the pages someone
+          would need to keep the house running without you.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Saving</h3></div>
+        <p class="tiny muted">
+          Every save keeps the previous version, so you can always go back.
+        </p>
+        <button class="btn btn-primary" style="width:100%;justify-content:center">
+          {{ 'Save changes' if page else 'Create page' }}
+        </button>
+        {% if page %}
+          <a class="btn mt" style="width:100%;justify-content:center"
+             href="{{ url_for('docs.detail', slug=page.slug) }}">Cancel</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if page %}
+  <form method="post" action="{{ url_for('docs.delete', slug=page.slug) }}" class="mt"
+        data-confirm="Delete “{{ page.title }}” and its history?">
+    {{ csrf_field() }}
+    <button class="btn btn-danger btn-sm">Delete this page</button>
+  </form>
+{% endif %}
+{% endblock %}

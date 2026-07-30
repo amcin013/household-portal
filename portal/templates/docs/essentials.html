@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Essentials · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>🧭 Essentials</h1>
+    <p>{{ settings.get('emergency_note', '') }}</p>
+  </div>
+  <div class="page-actions no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print all</button>
+    <a class="btn" href="{{ url_for('docs.new') }}">＋ New page</a>
+  </div>
+</div>
+
+{% if pages %}
+  <div class="card mb no-print">
+    <div class="card-head"><h2>In here</h2></div>
+    <ol style="padding-left:1.2rem;line-height:1.9;margin:0">
+      {% for page in pages %}
+        <li><a href="#p{{ page.id }}">{{ page.title }}</a></li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  {% for page in pages %}
+    <div class="card mb {{ 'page-break' if not loop.first }}" id="p{{ page.id }}">
+      <div class="card-head">
+        <h2>{{ page.icon or '' }} {{ page.title }}</h2>
+        <a class="card-link no-print" href="{{ url_for('docs.edit', slug=page.slug) }}">Edit</a>
+      </div>
+      <div class="prose">
+        {% if page.body %}{{ page.body | markdown }}
+        {% else %}<p class="muted">Empty.</p>{% endif %}
+      </div>
+      <p class="tiny muted mt">
+        {{ page.category }} · updated {{ page.updated_at | humandate }}
+      </p>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🧭</span>
+    <p>
+      Nothing marked essential yet. Tick <b>Mark as essential</b> on any page and
+      it collects here — the set someone would need if you were not around.
+    </p>
+    <p class="tiny">
+      Worth writing: where the money is and how bills get paid, insurance and
+      policy numbers, who to call for the house, medical details, where the
+      documents live, how to get into the accounts.
+    </p>
+    <a class="btn btn-primary" href="{{ url_for('docs.new') }}">Write the first one</a>
+  </div>
+{% endif %}
+{% endblock %}

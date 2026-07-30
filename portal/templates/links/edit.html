@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit link' if link else 'New link' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head"><h1>{{ 'Edit link' if link else 'New link' }}</h1></div>
+
+<form method="post" class="card" style="max-width:640px">
+  {{ csrf_field() }}
+
+  <div class="field-row">
+    <div class="field" style="max-width:5.5rem">
+      <label for="icon">Icon</label>
+      <input type="text" id="icon" name="icon" maxlength="4" placeholder="🎬"
+             value="{{ link.icon or '' if link else '' }}" style="text-align:center;font-size:1.2rem">
+    </div>
+    <div class="field">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" required autofocus
+             value="{{ link.title if link else '' }}" placeholder="Jellyfin">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="url">URL</label>
+    <input type="text" id="url" name="url" required
+           value="{{ link.url if link else '' }}" placeholder="http://192.168.1.50:8096">
+    <div class="hint">A bare address like <code>192.168.1.50:8096</code> works too.</div>
+  </div>
+
+  <div class="field">
+    <label for="description">Description</label>
+    <input type="text" id="description" name="description"
+           value="{{ link.description or '' if link else '' }}" placeholder="Movies and TV">
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="category">Category</label>
+      <input type="text" id="category" name="category" list="catList"
+             value="{{ link.category if link else 'General' }}">
+      <datalist id="catList">
+        {% for c in categories %}<option value="{{ c }}">{% endfor %}
+        {% for c in ['Media','Home network','Bills','Shopping','School','Work','Government'] %}
+          <option value="{{ c }}">
+        {% endfor %}
+      </datalist>
+    </div>
+    <div class="field" style="max-width:8rem">
+      <label for="sort_order">Order</label>
+      <input type="number" id="sort_order" name="sort_order"
+             value="{{ link.sort_order if link else 0 }}">
+    </div>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" name="pinned" {{ 'checked' if link and link.pinned }}>
+    Pin to the home page
+  </label>
+  <label class="check">
+    <input type="checkbox" name="open_new_tab" {{ 'checked' if not link or link.open_new_tab }}>
+    Open in a new tab
+  </label>
+
+  <div class="form-actions">
+    <button class="btn btn-primary">{{ 'Save' if link else 'Add link' }}</button>
+    <a class="btn" href="{{ url_for('links.index') }}">Cancel</a>
+  </div>
+</form>
+
+{% if link %}
+  <form method="post" action="{{ url_for('links.delete', link_id=link.id) }}"
+        class="mt" data-confirm="Remove “{{ link.title }}”?">
+    {{ csrf_field() }}
+    <button class="btn btn-danger btn-sm">Delete this link</button>
+  </form>
+{% endif %}
+{% endblock %}

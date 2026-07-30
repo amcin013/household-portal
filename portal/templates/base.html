@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-theme="{{ theme_key }}" data-mode="{{ theme_mode }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="color-scheme" content="{{ theme_mode }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏡</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>{{ theme_style }}</style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('dashboard.index') }}">
+      <span class="brand-mark">🏡</span>
+      <span>
+        <span class="brand-name">{{ site_name }}</span><br>
+        <span class="brand-tag">{{ site_tagline }}</span>
+      </span>
+    </a>
+
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if nav_active == 'dashboard.index' }}">
+        <span class="nav-icon">🏠</span> Home
+      </a>
+
+      <div class="nav-label">The house</div>
+      <a href="{{ url_for('places.index') }}" class="{{ 'active' if nav_active.startswith('places.') }}">
+        <span class="nav-icon">📍</span> Places
+      </a>
+      <a href="{{ url_for('docs.index') }}" class="{{ 'active' if nav_active.startswith('docs.') and nav_active != 'docs.essentials' }}">
+        <span class="nav-icon">📄</span> How-to &amp; info
+      </a>
+      <a href="{{ url_for('docs.essentials') }}" class="{{ 'active' if nav_active == 'docs.essentials' }}">
+        <span class="nav-icon">🧭</span> Essentials
+      </a>
+      <a href="{{ url_for('links.index') }}" class="{{ 'active' if nav_active.startswith('links.') }}">
+        <span class="nav-icon">🔗</span> Links
+      </a>
+
+      <div class="nav-label">Money</div>
+      <a href="{{ url_for('money.index') }}" class="{{ 'active' if nav_active == 'money.index' }}">
+        <span class="nav-icon">📅</span> This month
+      </a>
+      <a href="{{ url_for('money.payees') }}" class="{{ 'active' if nav_active in ('money.payees', 'money.new_payee', 'money.edit_payee') }}">
+        <span class="nav-icon">💵</span> Bills &amp; payments
+      </a>
+      <a href="{{ url_for('money.accounts') }}" class="{{ 'active' if nav_active in ('money.accounts', 'money.new_account', 'money.edit_account') }}">
+        <span class="nav-icon">🏦</span> Accounts
+      </a>
+      <a href="{{ url_for('money.forecast') }}" class="{{ 'active' if nav_active == 'money.forecast' }}">
+        <span class="nav-icon">📈</span> Forecast
+      </a>
+
+      <div class="nav-label">Kitchen</div>
+      <a href="{{ url_for('recipes.index') }}" class="{{ 'active' if nav_active.startswith('recipes.') and nav_active != 'recipes.shopping' }}">
+        <span class="nav-icon">🍳</span> Recipes
+      </a>
+      <a href="{{ url_for('recipes.shopping') }}" class="{{ 'active' if nav_active == 'recipes.shopping' }}">
+        <span class="nav-icon">🛒</span> Shopping list
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="flex" style="gap:.6rem">
+        <span class="avatar">
+          {% if current_user.avatar_url %}<img src="{{ current_user.avatar_url }}" alt="">
+          {% else %}{{ current_user.initials }}{% endif %}
+        </span>
+        <span class="grow" style="min-width:0">
+          <div class="tiny" style="font-weight:600">{{ current_user.display_name }}</div>
+          <a class="tiny muted" href="{{ url_for('admin.index') }}">Settings</a>
+          ·
+          <a class="tiny muted" href="{{ url_for('auth.logout') }}">Sign out</a>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-ghost menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <form class="searchbar" action="{{ url_for('search.index') }}" method="get" role="search">
+        <input type="search" name="q" placeholder="Search recipes, how-tos, bills…"
+               value="{{ request.args.get('q', '') }}" aria-label="Search the portal">
+      </form>
+      <div class="flex" style="margin-left:auto">
+        {% block topbar_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <main class="content {% block content_class %}{% endblock %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flashes">
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">
+                <span>{{ {'success':'✓','error':'✕','warning':'!','info':'i'}.get(category,'i') }}</span>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+  {% block anon_content %}{% endblock %}
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

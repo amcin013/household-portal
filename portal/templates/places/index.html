@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Places · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Places</h1>
+    <p>Properties, their conditions, and everything worth writing down about them.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{{ url_for('places.new') }}">＋ Add place</a>
+  </div>
+</div>
+
+{% if places %}
+  <div class="grid grid-2">
+    {% for place in places %}
+      <a class="card" href="{{ url_for('places.detail', slug=place.slug) }}"
+         style="text-decoration:none;color:inherit">
+        <div class="card-head">
+          <h2>{{ place.icon }} {{ place.name }}</h2>
+          {% if not place.show_on_dashboard %}
+            <span class="pill">off the home page</span>
+          {% endif %}
+        </div>
+        <p class="muted tiny" style="margin:0">
+          {% if place.address %}{{ place.address }}<br>{% endif %}
+          {{ place.city }}{% if place.state %}, {{ place.state }}{% endif %}
+        </p>
+        <div class="flex wrap mt tiny muted">
+          <span>{{ place.facts | length }} note{{ 's' if place.facts|length != 1 }}</span>
+          <span>·</span>
+          <span>{{ place.sensors | length }} sensor{{ 's' if place.sensors|length != 1 }}</span>
+          {% if not place.has_coords %}
+            <span class="pill pill-warn">no coordinates</span>
+          {% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">
+    <span class="e-icon">📍</span>
+    <p>No places yet. Add Bayshore and Secretariat to get weather on the home page.</p>
+    <a class="btn btn-primary" href="{{ url_for('places.new') }}">Add a place</a>
+  </div>
+{% endif %}
+{% endblock %}

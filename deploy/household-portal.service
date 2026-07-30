@@ -1,0 +1,46 @@
+# systemd unit for the household portal.
+#
+#   sudo cp deploy/household-portal.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now household-portal
+#
+# Check on it with:  systemctl status household-portal
+# Read the log with: journalctl -u household-portal -f
+
+[Unit]
+Description=Household Portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# The user the service runs as. Create it with:
+#   sudo useradd --system --home /opt/household-portal --shell /usr/sbin/nologin portal
+User=portal
+Group=portal
+
+WorkingDirectory=/opt/household-portal
+Environment="PATH=/opt/household-portal/.venv/bin"
+EnvironmentFile=/opt/household-portal/.env
+
+ExecStart=/opt/household-portal/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind 127.0.0.1:8000 \
+    --timeout 60 \
+    --access-logfile - \
+    --error-logfile - \
+    wsgi:app
+
+Restart=always
+RestartSec=5
+
+# The database and instance folder are the only things it needs to write to.
+ReadWritePaths=/opt/household-portal/instance
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

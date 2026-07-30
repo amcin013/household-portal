@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}History of {{ page.title }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>History</h1>
+    <p>{{ page.title }} · {{ page.revisions | length }} earlier version{{ 's' if page.revisions|length != 1 }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('docs.detail', slug=page.slug) }}">Back to the page</a>
+  </div>
+</div>
+
+<div class="card mb">
+  <div class="card-head">
+    <h2>Current</h2>
+    <span class="tiny muted">
+      {{ page.updated_at | timeago }}
+      {% if page.updated_by %} · {{ page.updated_by.display_name }}{% endif %}
+    </span>
+  </div>
+  <div class="prose">{{ page.body | markdown }}</div>
+</div>
+
+{% for revision in page.revisions %}
+  <details class="disclose">
+    <summary>
+      {{ revision.created_at | timeago }}
+      {% if revision.author %} · {{ revision.author.display_name }}{% endif %}
+      {% if revision.title != page.title %} · was titled “{{ revision.title }}”{% endif %}
+    </summary>
+    <div class="prose">{{ revision.body | markdown }}</div>
+    <form method="post"
+          action="{{ url_for('docs.restore', slug=page.slug, revision_id=revision.id) }}"
+          class="mt" data-confirm="Put this version back? The current text is kept in the history.">
+      {{ csrf_field() }}
+      <button class="btn btn-sm">Restore this version</button>
+    </form>
+  </details>
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🕒</span>
+    <p>No earlier versions yet — this page has only been saved once.</p>
+  </div>
+{% endfor %}
+{% endblock %}

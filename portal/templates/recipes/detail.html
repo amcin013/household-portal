@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ recipe.title }}</h1>
+    <p>
+      {% if recipe.course %}{{ recipe.course }} · {% endif %}
+      {{ recipe.servings }} {{ recipe.serving_noun }}
+      {% if recipe.prep_minutes %} · {{ recipe.prep_minutes | minutes }} prep{% endif %}
+      {% if recipe.cook_minutes %} · {{ recipe.cook_minutes | minutes }} cook{% endif %}
+      {% if recipe.source %} · from {{ recipe.source }}{% endif %}
+    </p>
+    {% if recipe.tag_list %}
+      <div class="chips mt">
+        {% for t in recipe.tag_list %}
+          <a class="chip" href="{{ url_for('recipes.index', tag=t) }}">{{ t }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="page-actions">
+    <form method="post" action="{{ url_for('recipes.toggle_favorite', slug=recipe.slug) }}" class="inline-form">
+      {{ csrf_field() }}
+      <button class="btn" title="Favourite">{{ '⭐' if recipe.favorite else '☆' }}</button>
+    </form>
+    {% if recipe.source_url %}
+      <a class="btn" href="{{ recipe.source_url }}" target="_blank" rel="noopener">Source ↗</a>
+    {% endif %}
+    <a class="btn" href="{{ url_for('recipes.edit', slug=recipe.slug) }}">Edit</a>
+  </div>
+</div>
+
+{% if recipe.description %}
+  <div class="card mb"><div class="prose">{{ recipe.description | markdown }}</div></div>
+{% endif %}
+
+<div class="cook-layout">
+  <div>
+    {# ---------- scaling ---------- #}
+    <div class="card mb">
+      <div class="card-head"><h2>Ingredients</h2></div>
+
+      <div class="scaler" id="scaler">
+        <span class="tiny muted">Make</span>
+        <input class="serving-input" type="number" min="1" max="200" value="{{ servings }}"
+               aria-label="Number of {{ recipe.serving_noun }}">
+        <span class="tiny muted">{{ recipe.serving_noun }}</span>
+        <span class="steps">
+          <button class="btn btn-sm" data-servings="{{ (recipe.servings / 2) | round(0, 'ceil') | int }}">½×</button>
+          <button class="btn btn-sm" data-servings="{{ recipe.servings }}">1×</button>
+          <button class="btn btn-sm" data-servings="{{ recipe.servings * 2 }}">2×</button>
+          <button class="btn btn-sm" data-servings="{{ recipe.servings * 3 }}">3×</button>
+        </span>
+      </div>
+
+      {% if factor != 1 %}
+        <p class="tiny pill pill-accent">
+          Scaled {{ '%g' % factor }}× from {{ recipe.servings }} {{ recipe.serving_noun }}
+        </p>
+      {% endif %}
+
+      <ul class="ingredients mt">
+        {% for row in rows %}
+          {% if row.heading %}
+            <li class="ing-heading">{{ row.item }}</li>
+          {% else %}
+            <li>
+              {% if row.quantity is not none %}
+                <span class="ing-qty">{{ row.quantity | qty }}{% if row.unit %} {{ row.unit }}{% endif %}</span>
+              {% endif %}
+              <span>
+                {{ row.item }}
+                {% if row.note %}<span class="ing-note">, {{ row.note }}</span>{% endif %}
+              </span>
+            </li>
+          {% endif %}
+        {% else %}
+          <li class="muted tiny">No ingredients listed yet.</li>
+        {% endfor %}
+      </ul>
+      <p class="tiny muted mt">Tap an ingredient to check it off while you cook.</p>
+    </div>
+
+    {# ---------- nutrition ---------- #}
+    <div class="card">
+      <div class="card-head">
+        <h3>Nutrition</h3>
+        <a class="card-link" href="{{ url_for('admin.foods') }}">Food data →</a>
+      </div>
+
+      {% if nutrition.has_data %}
+        <p class="tiny muted">Per serving, at {{ servings }} {{ recipe.serving_noun }}.</p>
+        <div class="nutrition-grid">
+          {% for key, (label, unit) in nutrition_labels.items() %}
+            <div class="nut">
+              <div class="n-val">{{ nutrition.per_serving[key] | round | int }}{{ unit }}</div>
+              <div class="n-lab">{{ label }}</div>
+            </div>
+          {% endfor %}
+        </div>
+
+        {% if nutrition.uncounted %}
+          <details class="disclose mt">
+            <summary>
+              {{ (nutrition.coverage * 100) | round | int }}% of ingredients counted
+            </summary>
+            <p class="tiny muted">
+              Not included, because they have no food data or no weight we can work
+              out: {{ nutrition.uncounted | join(', ') }}.
+              Add them under <a href="{{ url_for('admin.foods') }}">Settings → Food data</a>
+              and link them on the recipe.
+            </p>
+          </details>
+        {% else %}
+          <p class="tiny muted mt">All ingredients counted.</p>
+        {% endif %}
+      {% else %}
+        <p class="tiny muted">
+          No nutrition yet. Link ingredients to entries in
+          <a href="{{ url_for('admin.foods') }}">Food data</a> and the totals fill in
+          here automatically — scaling included.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ---------- method ---------- #}
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>Method</h2></div>
+      <div class="prose">
+        {% if recipe.instructions %}{{ recipe.instructions | markdown }}
+        {% else %}<p class="muted tiny">No steps written yet.</p>{% endif %}
+      </div>
+    </div>
+
+    {% if recipe.notes %}
+      <div class="card">
+        <div class="card-head"><h3>Notes</h3></div>
+        <div class="prose">{{ recipe.notes | markdown }}</div>
+      </div>
+    {% endif %}
+
+    <p class="tiny muted mt">
+      Updated {{ recipe.updated_at | timeago }}{% if recipe.created_by %} · added by {{ recipe.created_by.display_name }}{% endif %}
+    </p>
+  </div>
+</div>
+{% endblock %}

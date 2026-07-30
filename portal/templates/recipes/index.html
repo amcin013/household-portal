@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Recipes · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Recipes</h1>
+    <p>{{ recipes|length }} recipe{{ 's' if recipes|length != 1 }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('recipes.shopping') }}">🛒 Shopping list</a>
+    <a class="btn btn-primary" href="{{ url_for('recipes.new') }}">＋ New recipe</a>
+  </div>
+</div>
+
+<form method="get" class="card mb">
+  <div class="field-row" style="margin-bottom:0">
+    <div class="field" style="margin-bottom:0">
+      <label for="q">Search</label>
+      <input type="search" id="q" name="q" value="{{ q }}" placeholder="chicken, chili, casserole…">
+    </div>
+    <div class="field" style="margin-bottom:0;max-width:200px">
+      <label for="course">Course</label>
+      <select id="course" name="course" data-autosubmit>
+        <option value="">All</option>
+        {% for c in courses %}
+          <option value="{{ c }}" {{ 'selected' if c == course }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:.5rem">
+      <button class="btn btn-primary">Search</button>
+      {% if q or course or tag %}
+        <a class="btn" href="{{ url_for('recipes.index') }}">Clear</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if tags %}
+    <div class="chips mt">
+      {% for t in tags %}
+        <a class="chip {{ 'on' if t == tag }}"
+           href="{{ url_for('recipes.index', tag='' if t == tag else t) }}">{{ t }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</form>
+
+{% if recipes %}
+  <div class="recipe-grid">
+    {% for recipe in recipes %}
+      <a class="recipe-card" href="{{ url_for('recipes.detail', slug=recipe.slug) }}">
+        <div class="thumb">
+          {% if recipe.image_url %}
+            <img src="{{ recipe.image_url }}" alt="" loading="lazy">
+          {% else %}🍽️{% endif %}
+        </div>
+        <div class="body">
+          <div class="r-title">
+            {% if recipe.favorite %}⭐ {% endif %}{{ recipe.title }}
+          </div>
+          {% if recipe.description %}
+            <div class="tiny muted">{{ recipe.description | plain(90) }}</div>
+          {% endif %}
+          <div class="r-meta">
+            {{ recipe.servings }} {{ recipe.serving_noun }}
+            {% if recipe.total_minutes %} · {{ recipe.total_minutes | minutes }}{% endif %}
+            {% if recipe.course %} · {{ recipe.course }}{% endif %}
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🍳</span>
+    {% if q or course or tag %}
+      <p>No recipes matched that.</p>
+      <a class="btn" href="{{ url_for('recipes.index') }}">Show all</a>
+    {% else %}
+      <p>No recipes yet.</p>
+      <a class="btn btn-primary" href="{{ url_for('recipes.new') }}">Add the first one</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

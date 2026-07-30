@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ account.name if account else 'New account' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ 'Edit ' + account.name if account else 'New account' }}</h1>
+</div>
+
+<div class="grid grid-2">
+  <form method="post" class="card">
+    {{ csrf_field() }}
+
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required autofocus
+             value="{{ account.name if account else '' }}" placeholder="TSP">
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="kind">Kind</label>
+        <select id="kind" name="kind">
+          {% for key, label in kinds.items() %}
+            <option value="{{ key }}" {{ 'selected' if account and account.kind == key }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="institution">Institution</label>
+        <input type="text" id="institution" name="institution"
+               value="{{ account.institution or '' if account else '' }}">
+      </div>
+    </div>
+
+    {% if not account %}
+      <div class="field">
+        <label for="balance">Balance today</label>
+        <input type="text" id="balance" name="balance" inputmode="decimal" placeholder="0.00">
+      </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="url">Login link</label>
+      <input type="text" id="url" name="url" value="{{ account.url or '' if account else '' }}">
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="monthly_contribution">Added each month</label>
+        <input type="text" id="monthly_contribution" name="monthly_contribution" inputmode="decimal"
+               value="{{ account.monthly_contribution if account else '' }}">
+      </div>
+      <div class="field">
+        <label for="annual_growth_pct">Growth %/yr</label>
+        <input type="text" id="annual_growth_pct" name="annual_growth_pct" inputmode="decimal"
+               value="{{ account.annual_growth_pct if account else '' }}" placeholder="6">
+        <div class="hint">Used by the forecast. A guess is fine.</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="account_hint">Account reference</label>
+      <input type="text" id="account_hint" name="account_hint"
+             value="{{ account.account_hint or '' if account else '' }}" placeholder="ends 8821">
+    </div>
+
+    <div class="field">
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" style="min-height:5rem">{{ account.notes or '' if account else '' }}</textarea>
+    </div>
+
+    <label class="check">
+      <input type="checkbox" name="include_in_net_worth"
+             {{ 'checked' if not account or account.include_in_net_worth }}>
+      Count towards net worth
+    </label>
+    <label class="check">
+      <input type="checkbox" name="active" {{ 'checked' if not account or account.active }}>
+      Active
+    </label>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">{{ 'Save' if account else 'Add account' }}</button>
+      <a class="btn" href="{{ url_for('money.accounts') }}">Cancel</a>
+    </div>
+  </form>
+
+  <div>
+    {% if account %}
+      <div class="card">
+        <div class="card-head"><h2>Balance history</h2></div>
+
+        <form method="post" action="{{ url_for('money.add_balance', account_id=account.id) }}"
+              class="field-row" style="align-items:flex-end">
+          {{ csrf_field() }}
+          <div class="field">
+            <label for="new_balance">New balance</label>
+            <input type="text" id="new_balance" name="balance" inputmode="decimal" required>
+          </div>
+          <div class="field">
+            <label for="as_of">As of</label>
+            <input type="date" id="as_of" name="as_of">
+          </div>
+          <div class="field" style="flex:0">
+            <button class="btn btn-primary">Add</button>
+          </div>
+        </form>
+
+        {% if account.snapshots %}
+          {% set values = account.snapshots | map(attribute='balance') | list %}
+          {% set peak = values | max or 1 %}
+          <div class="mini-bars mb">
+            {% for snap in account.snapshots | reverse %}
+              <div class="mb" style="height:{{ ((snap.balance / peak) * 100) | round(1) if peak else 0 }}%"
+                   title="{{ snap.as_of }}: {{ snap.balance | money_short }}"></div>
+            {% endfor %}
+          </div>
+          <table class="data">
+            <tbody>
+              {% for snap in account.snapshots[:14] %}
+                <tr>
+                  <td>{{ snap.as_of | humandate }}</td>
+                  <td class="num">{{ snap.balance | money }}</td>
+                  <td class="tiny muted">{{ snap.note or '' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="muted tiny">No balances recorded yet.</p>
+        {% endif %}
+      </div>
+
+      <form method="post" action="{{ url_for('money.delete_account', account_id=account.id) }}"
+            class="mt" data-confirm="Delete {{ account.name }} and its history?">
+        {{ csrf_field() }}
+        <button class="btn btn-danger btn-sm">Delete this account</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

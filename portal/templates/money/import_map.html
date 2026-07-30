@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Check the columns · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Check the columns</h1>
+    <p>{{ row_count }} rows read. Nothing has been saved yet.</p>
+  </div>
+</div>
+
+<div class="card mb">
+  <div class="card-head"><h2>What the file looks like</h2></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>{% for h in headers %}<th>{{ h or '—' }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>{% for cell in row %}<td class="tiny">{{ cell }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if row_count > rows | length %}
+    <p class="tiny muted mt">Showing the first {{ rows | length }} of {{ row_count }} rows.</p>
+  {% endif %}
+</div>
+
+<form method="post" action="{{ url_for('money.import_confirm') }}">
+  {{ csrf_field() }}
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-head"><h2>Which column is which</h2></div>
+
+      {% for field, label, hint in [
+        ('name', 'Name', 'The company, account, or item. Required.'),
+        ('amount', 'Amount', 'Monthly payment or balance.'),
+        ('due_day', 'Due day', 'Day of the month, or a date it can read the day from.'),
+        ('category', 'Category', 'Optional grouping.'),
+        ('url', 'Link', 'Payment or login page.'),
+        ('account_hint', 'Account reference', 'Last four digits, never a full number.'),
+        ('notes', 'Notes', '')
+      ] %}
+        <div class="field">
+          <label for="map_{{ field }}">{{ label }}</label>
+          <select id="map_{{ field }}" name="map_{{ field }}">
+            <option value="-1">— not in this file —</option>
+            {% for h in headers %}
+              <option value="{{ loop.index0 }}"
+                {{ 'selected' if mapping.get(field) == loop.index0 }}>
+                {{ h or 'Column ' ~ loop.index }}
+              </option>
+            {% endfor %}
+          </select>
+          {% if hint %}<div class="hint">{{ hint }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div>
+      <div class="card mb">
+        <div class="card-head"><h2>Where should it go?</h2></div>
+
+        <div class="field">
+          <label class="check">
+            <input type="radio" name="target" value="payees" checked>
+            <span><b>Bills</b> — companies paid every month</span>
+          </label>
+          <label class="check">
+            <input type="radio" name="target" value="accounts">
+            <span><b>Accounts</b> — things with a balance, like savings or the TSP</span>
+          </label>
+          <label class="check">
+            <input type="radio" name="target" value="ledger">
+            <span><b>Recurring</b> — income or expenses with no company page</span>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="account_kind">If accounts, what kind</label>
+            <select id="account_kind" name="account_kind">
+              <option value="savings">Savings</option>
+              <option value="checking">Checking</option>
+              <option value="retirement">Retirement / TSP</option>
+              <option value="investment">Investment</option>
+              <option value="debt">Debt</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ledger_kind">If recurring, which way</label>
+            <select id="ledger_kind" name="ledger_kind">
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" name="replace">
+          Replace what is already there instead of merging
+        </label>
+        <div class="hint">
+          Leave this off and matching names are updated in place.
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary">Import</button>
+          <a class="btn" href="{{ url_for('money.import_sheet') }}">Start over</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Preview</h2></div>
+        {% if preview %}
+          <table class="data">
+            <thead>
+              <tr><th>Name</th><th class="num">Amount</th><th>Day</th><th>Category</th></tr>
+            </thead>
+            <tbody>
+              {% for item in preview %}
+                <tr>
+                  <td>{{ item.name }}</td>
+                  <td class="num">{{ item.amount | money if item.amount is not none else '—' }}</td>
+                  <td>{{ item.due_day or '—' }}</td>
+                  <td class="tiny muted">{{ item.category }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="tiny muted mt">
+            This preview uses the guessed columns. Change a dropdown and press
+            Import — the real run uses whatever is selected.
+          </p>
+        {% else %}
+          <p class="muted tiny">
+            Nothing recognisable yet. Pick the column that holds the name.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

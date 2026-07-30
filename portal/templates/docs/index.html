@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}How-to &amp; info · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>How-to &amp; info</h1>
+    <p>{{ pages | length }} page{{ 's' if pages|length != 1 }} · instructions, reference, anything worth writing down</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('docs.essentials') }}">🧭 Essentials</a>
+    <a class="btn btn-primary" href="{{ url_for('docs.new') }}">＋ New page</a>
+  </div>
+</div>
+
+<form method="get" class="card mb">
+  <div class="field-row" style="margin-bottom:0">
+    <div class="field" style="margin-bottom:0">
+      <label for="q">Search pages</label>
+      <input type="search" id="q" name="q" value="{{ q }}" placeholder="water heater, alarm, propane…">
+    </div>
+    <div class="field" style="margin-bottom:0;max-width:220px">
+      <label for="category">Category</label>
+      <select id="category" name="category" data-autosubmit>
+        <option value="">All</option>
+        {% for c in categories %}
+          <option value="{{ c }}" {{ 'selected' if c == category }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:.5rem">
+      <button class="btn btn-primary">Search</button>
+      {% if q or category %}<a class="btn" href="{{ url_for('docs.index') }}">Clear</a>{% endif %}
+    </div>
+  </div>
+</form>
+
+{% if grouped %}
+  {% for cat, rows in grouped %}
+    <div class="card mb">
+      <div class="card-head"><h2>{{ cat }}</h2></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.6rem">
+        {% for page in rows %}
+          <a class="link-tile" href="{{ url_for('docs.detail', slug=page.slug) }}">
+            <span class="li-icon">{{ page.icon or '📄' }}</span>
+            <span style="min-width:0">
+              <span class="li-title">
+                {{ page.title }}
+                {% if page.pinned %}📌{% endif %}
+                {% if page.is_essential %}<span class="pill pill-accent">essential</span>{% endif %}
+              </span>
+              <span class="li-sub">{{ page.summary or 'No summary' }}</span>
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <span class="e-icon">📄</span>
+    {% if q or category %}
+      <p>No pages matched.</p>
+      <a class="btn" href="{{ url_for('docs.index') }}">Show all</a>
+    {% else %}
+      <p>No pages yet. Good first ones: how to restart the Jellyfin server,
+         where the water shutoff is, what to do if the AC quits.</p>
+      <a class="btn btn-primary" href="{{ url_for('docs.new') }}">Write the first page</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

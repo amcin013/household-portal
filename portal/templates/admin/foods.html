@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Food data · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Food data</h1>
+    <p>Nutrition per 100 g. Link these to recipe ingredients and the totals work themselves out.</p>
+  </div>
+</div>
+
+<div class="card mb">
+  <div class="card-head"><h2>＋ Add a food</h2></div>
+  <form method="post">
+    {{ csrf_field() }}
+    <div class="field-row">
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required placeholder="Chicken breast, raw">
+      </div>
+      {% for key, (label, unit) in nutrition_labels.items() %}
+        <div class="field" style="max-width:7rem">
+          <label for="{{ key }}">{{ label }}{% if unit %} ({{ unit }}){% endif %}</label>
+          <input type="text" id="{{ key }}" name="{{ key }}" inputmode="decimal" placeholder="0">
+        </div>
+      {% endfor %}
+    </div>
+
+    <details class="disclose">
+      <summary>Unit weights — how much one cup or one of them weighs</summary>
+      <p class="tiny muted">
+        Needed for anything not measured by weight. Without it, "2 cups flour"
+        cannot be turned into grams and gets left out of the totals.
+      </p>
+      <div class="field-row">
+        {% for i in range(4) %}
+          <div class="field" style="max-width:11rem">
+            <label>Unit / grams</label>
+            <div class="flex">
+              <input type="text" name="unit_name" placeholder="cup" style="width:5.5rem">
+              <input type="text" name="unit_grams" placeholder="120" inputmode="decimal" style="width:5rem">
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <p class="tiny muted">
+        Common ones: 1 cup flour ≈ 120 g, 1 cup water ≈ 240 g, 1 tbsp oil ≈ 14 g,
+        1 large egg ≈ 50 g. Use <code>each</code> for things counted rather than
+        measured.
+      </p>
+    </details>
+
+    <button class="btn btn-primary">Add food</button>
+  </form>
+</div>
+
+{% if foods %}
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ foods | length }} food{{ 's' if foods|length != 1 }}</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Name</th>
+            {% for key, (label, unit) in nutrition_labels.items() %}
+              <th class="num">{{ label }}</th>
+            {% endfor %}
+            <th>Units</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for food in foods %}
+            <tr>
+              <td><b>{{ food.name }}</b></td>
+              {% for key, (label, unit) in nutrition_labels.items() %}
+                <td class="num">{{ food[key] | round(1) }}</td>
+              {% endfor %}
+              <td class="tiny muted">
+                {% for unit, grams in food.unit_grams.items() %}
+                  {{ unit }}={{ grams }}g{{ ', ' if not loop.last }}
+                {% else %}—{% endfor %}
+              </td>
+              <td class="right" style="width:1%">
+                <form method="post" action="{{ url_for('admin.edit_food', food_id=food.id) }}"
+                      class="inline-form" data-confirm="Remove {{ food.name }}?">
+                  {{ csrf_field() }}
+                  <input type="hidden" name="action" value="delete">
+                  <button class="btn btn-sm btn-ghost muted">✕</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="tiny muted mt">
+      Figures are per 100 g. The USDA FoodData Central site
+      (fdc.nal.usda.gov) is a good place to look them up.
+    </p>
+  </div>
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🥗</span>
+    <p>No foods yet. Recipes work fine without this — it only powers the nutrition panel.</p>
+  </div>
+{% endif %}
+{% endblock %}

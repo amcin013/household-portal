@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Recurring · {{ site_name }}{% endblock %}
+
+{% macro row_form(item, accounts) %}
+  <form method="post" action="{{ url_for('money.edit_recurring', item_id=item.id) }}"
+        class="flex wrap" style="gap:.4rem;align-items:center">
+    {{ csrf_field() }}
+    <input type="text" name="name" value="{{ item.name }}" style="flex:2;min-width:9rem">
+    <input type="text" name="amount" value="{{ item.amount }}" inputmode="decimal" style="width:7rem">
+    <select name="frequency" style="width:8rem">
+      {% for f in ['monthly','biweekly','annual'] %}
+        <option value="{{ f }}" {{ 'selected' if item.frequency == f }}>{{ f }}</option>
+      {% endfor %}
+    </select>
+    <input type="number" name="day_of_month" value="{{ item.day_of_month }}" min="1" max="31"
+           style="width:4.5rem" title="Day of month">
+    <input type="hidden" name="kind" value="{{ item.kind }}">
+    {% if item.kind == 'transfer' %}
+      <select name="to_account_id" style="width:10rem">
+        <option value="">— account —</option>
+        {% for a in accounts %}
+          <option value="{{ a.id }}" {{ 'selected' if item.to_account_id == a.id }}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    {% else %}
+      <input type="text" name="category" value="{{ item.category }}" style="width:8rem">
+    {% endif %}
+    <label class="check" style="margin:0">
+      <input type="checkbox" name="active" {{ 'checked' if item.active }}> on
+    </label>
+    <button class="btn btn-sm">Save</button>
+  </form>
+  <form method="post" action="{{ url_for('money.delete_recurring', item_id=item.id) }}"
+        class="inline-form" data-confirm="Remove {{ item.name }}?">
+    {{ csrf_field() }}
+    <button class="btn btn-sm btn-ghost muted">✕</button>
+  </form>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Recurring</h1>
+    <p>Money that moves every month but is not a company bill — pay, child support, savings transfers.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('money.forecast') }}">See the forecast →</a>
+  </div>
+</div>
+
+{% for label, rows, icon, note in [
+  ('Income', income, '📈', 'Paychecks and anything else coming in.'),
+  ('Expenses', expenses, '📉', 'Regular outgoings with no company page to pay on.'),
+  ('Transfers', transfers, '🔁', 'Money moved into an account rather than spent.')
+] %}
+  <div class="card mb">
+    <div class="card-head">
+      <h2>{{ icon }} {{ label }}</h2>
+      <span class="tiny muted">
+        {{ rows | sum(attribute='monthly_amount') | money_short }}/mo
+      </span>
+    </div>
+    <p class="tiny muted">{{ note }}</p>
+
+    {% if rows %}
+      <div class="rows">
+        {% for item in rows %}
+          <div class="flex wrap" style="padding:.35rem 0;border-bottom:1px solid var(--border)">
+            {{ row_form(item, accounts) }}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted tiny">Nothing here yet.</p>
+    {% endif %}
+  </div>
+{% endfor %}
+
+<div class="card">
+  <div class="card-head"><h2>＋ Add a recurring item</h2></div>
+  <form method="post" class="field-row" style="align-items:flex-end">
+    {{ csrf_field() }}
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required placeholder="Child support">
+    </div>
+    <div class="field" style="max-width:9rem">
+      <label for="kind">Kind</label>
+      <select id="kind" name="kind">
+        <option value="expense">Expense</option>
+        <option value="income">Income</option>
+        <option value="transfer">Transfer</option>
+      </select>
+    </div>
+    <div class="field" style="max-width:8rem">
+      <label for="amount">Amount</label>
+      <input type="text" id="amount" name="amount" inputmode="decimal" required>
+    </div>
+    <div class="field" style="max-width:8rem">
+      <label for="frequency">How often</label>
+      <select id="frequency" name="frequency">
+        <option value="monthly">Monthly</option>
+        <option value="biweekly">Every 2 weeks</option>
+        <option value="annual">Yearly</option>
+      </select>
+    </div>
+    <div class="field" style="max-width:5.5rem">
+      <label for="day_of_month">Day</label>
+      <input type="number" id="day_of_month" name="day_of_month" min="1" max="31" value="1">
+    </div>
+    <div class="field" style="max-width:9rem">
+      <label for="category">Category</label>
+      <input type="text" id="category" name="category" value="Other">
+    </div>
+    <div class="field" style="max-width:11rem">
+      <label for="to_account_id">Into account</label>
+      <select id="to_account_id" name="to_account_id">
+        <option value="">— transfers only —</option>
+        {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field" style="flex:0">
+      <input type="hidden" name="active" value="on">
+      <button class="btn btn-primary">Add</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

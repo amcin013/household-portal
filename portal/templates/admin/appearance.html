@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Appearance · {{ site_name }}{% endblock %}
+
+{% macro theme_picker(name, selected) %}
+  <div class="theme-grid">
+    {% for key, theme in themes.items() %}
+      <label class="theme-swatch">
+        <input type="radio" name="{{ name }}" value="{{ key }}"
+               {{ 'checked' if selected == key }}>
+        <span class="theme-dots">
+          <i style="background:{{ theme.vars.bg }}"></i>
+          <i style="background:{{ theme.vars.surface }}"></i>
+          <i style="background:{{ theme.vars.accent }}"></i>
+          <i style="background:{{ theme.vars.text }}"></i>
+        </span>
+        <span class="theme-name">{{ theme.label }}</span>
+        <span class="theme-hint">{{ theme.hint }}</span>
+      </label>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Appearance</h1>
+    <p>Changes take effect as soon as you save.</p>
+  </div>
+</div>
+
+{% if current_user.is_admin %}
+  <form method="post" id="household">
+    {{ csrf_field() }}
+    <input type="hidden" name="scope" value="household">
+
+    <div class="card mb">
+      <div class="card-head"><h2>Name</h2></div>
+      <div class="field-row">
+        <div class="field">
+          <label for="site_name">What this is called</label>
+          <input type="text" id="site_name" name="site_name"
+                 value="{{ settings.get('site_name', '') }}">
+        </div>
+        <div class="field">
+          <label for="site_tagline">Tagline</label>
+          <input type="text" id="site_tagline" name="site_tagline"
+                 value="{{ settings.get('site_tagline', '') }}">
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-head"><h2>Theme</h2></div>
+      {{ theme_picker('theme', settings.get('theme')) }}
+    </div>
+
+    <div class="card mb">
+      <div class="card-head"><h2>Type</h2></div>
+      <div class="field-row">
+        <div class="field">
+          <label for="font">Font</label>
+          <select id="font" name="font">
+            {% for key, font in fonts.items() %}
+              <option value="{{ key }}" {{ 'selected' if settings.get('font') == key }}
+                      style="font-family:{{ font.stack }}">{{ font.label }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">Only fonts already on the device — nothing is downloaded.</div>
+        </div>
+        <div class="field">
+          <label for="density">Text size</label>
+          <select id="density" name="density">
+            {% for key, density in densities.items() %}
+              <option value="{{ key }}" {{ 'selected' if settings.get('density') == key }}>
+                {{ density.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--surface-2)">
+        <h3 style="margin-top:0">The quick brown fox</h3>
+        <p class="tiny muted" style="margin:0">
+          This card uses the theme you have applied now. Save to see a new one.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-head"><h2>Home page</h2></div>
+      <label class="check">
+        <input type="checkbox" name="dashboard_greeting"
+               {{ 'checked' if settings.get('dashboard_greeting') == '1' }}>
+        Greet people by name
+      </label>
+      <label class="check">
+        <input type="checkbox" name="allow_personal_theme"
+               {{ 'checked' if settings.get('allow_personal_theme') == '1' }}>
+        Let everyone pick their own theme and font
+      </label>
+
+      <div class="field mt">
+        <label for="emergency_note">Note at the top of Essentials</label>
+        <textarea id="emergency_note" name="emergency_note"
+                  style="min-height:5rem">{{ settings.get('emergency_note', '') }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">Save household look</button>
+    </div>
+  </form>
+{% else %}
+  <div class="card mb">
+    <p class="muted tiny">
+      The household look is set by an admin. You can still choose your own below.
+    </p>
+  </div>
+{% endif %}
+
+{% if settings.get('allow_personal_theme') == '1' or current_user.is_admin %}
+  <form method="post" id="personal" class="mt">
+    {{ csrf_field() }}
+    <input type="hidden" name="scope" value="personal">
+
+    <div class="card mb">
+      <div class="card-head">
+        <h2>Just for me</h2>
+        <span class="tiny muted">Only changes what {{ current_user.display_name }} sees</span>
+      </div>
+
+      <label class="theme-swatch mb" style="display:block;max-width:20rem">
+        <input type="radio" name="theme" value="" {{ 'checked' if not current_user.theme }}>
+        <span class="theme-name">Same as the household</span>
+        <span class="theme-hint">Follow whatever theme is set above.</span>
+      </label>
+
+      {{ theme_picker('theme', current_user.theme) }}
+
+      <div class="field mt" style="max-width:20rem">
+        <label for="personal_font">Font</label>
+        <select id="personal_font" name="font">
+          <option value="">Same as the household</option>
+          {% for key, font in fonts.items() %}
+            <option value="{{ key }}" {{ 'selected' if current_user.font == key }}
+                    style="font-family:{{ font.stack }}">{{ font.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary">Save my look</button>
+      </div>
+    </div>
+  </form>
+
+  {% if current_user.theme or current_user.font %}
+    <form method="post" action="{{ url_for('admin.reset_personal_theme') }}">
+      {{ csrf_field() }}
+      <button class="btn btn-sm">Go back to the household look</button>
+    </form>
+  {% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}{{ payee.name if payee else 'New company' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ 'Edit ' + payee.name if payee else 'New company' }}</h1>
+</div>
+
+<div class="grid grid-2">
+  <form method="post" class="card">
+    {{ csrf_field() }}
+
+    <div class="field">
+      <label for="name">Company</label>
+      <input type="text" id="name" name="name" required autofocus
+             value="{{ payee.name if payee else '' }}" placeholder="TXU Energy">
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="category">Category</label>
+        <input type="text" id="category" name="category" list="catList"
+               value="{{ payee.category if payee else 'Utilities' }}">
+        <datalist id="catList">
+          {% for c in categories %}<option value="{{ c }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="place_id">Property</label>
+        <select id="place_id" name="place_id">
+          <option value="">— any —</option>
+          {% for place in places %}
+            <option value="{{ place.id }}"
+              {{ 'selected' if payee and payee.place_id == place.id }}>{{ place.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="typical_amount">Typical amount</label>
+        <input type="text" id="typical_amount" name="typical_amount" inputmode="decimal"
+               value="{{ payee.typical_amount if payee else '' }}" placeholder="145.00">
+        <div class="hint">Seeds each new month; change the real figure when the bill arrives.</div>
+      </div>
+      <div class="field" style="max-width:8rem">
+        <label for="due_day">Due day</label>
+        <input type="number" id="due_day" name="due_day" min="1" max="31"
+               value="{{ payee.due_day if payee else 1 }}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="pay_url">Payment link</label>
+      <input type="text" id="pay_url" name="pay_url"
+             value="{{ payee.pay_url or '' if payee else '' }}"
+             placeholder="https://www.txu.com/en/login">
+      <div class="hint">The page you actually pay on. Shows as a Pay button.</div>
+    </div>
+
+    <div class="field">
+      <label for="login_url">Account/login link</label>
+      <input type="text" id="login_url" name="login_url"
+             value="{{ payee.login_url or '' if payee else '' }}">
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="account_hint">Account reference</label>
+        <input type="text" id="account_hint" name="account_hint"
+               value="{{ payee.account_hint or '' if payee else '' }}" placeholder="ends 4417">
+        <div class="hint">A hint only — never put a full account number here.</div>
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="text" id="phone" name="phone"
+               value="{{ payee.phone or '' if payee else '' }}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" style="min-height:5rem">{{ payee.notes or '' if payee else '' }}</textarea>
+    </div>
+
+    <label class="check">
+      <input type="checkbox" name="autopay" {{ 'checked' if payee and payee.autopay }}>
+      On autopay (marked paid automatically each month)
+    </label>
+    <label class="check">
+      <input type="checkbox" name="variable_amount"
+             {{ 'checked' if not payee or payee.variable_amount }}>
+      Amount changes month to month
+    </label>
+    <label class="check">
+      <input type="checkbox" name="active" {{ 'checked' if not payee or payee.active }}>
+      Active
+    </label>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">{{ 'Save' if payee else 'Add company' }}</button>
+      <a class="btn" href="{{ url_for('money.payees') }}">Cancel</a>
+    </div>
+  </form>
+
+  <div>
+    {% if payee and history %}
+      <div class="card">
+        <div class="card-head"><h2>What it has cost</h2></div>
+        {% set amounts = history | map(attribute='amount') | select('number') | list %}
+        {% if amounts %}
+          {% set peak = amounts | max or 1 %}
+          <div class="mini-bars mb">
+            {% for row in history %}
+              <div class="mb" style="height:{{ ((row.amount or 0) / peak * 100) | round(1) }}%"
+                   title="{{ row.period | month_label }}: {{ row.amount | money_short }}"></div>
+            {% endfor %}
+          </div>
+          <table class="data">
+            <tbody>
+              {% for row in history | reverse %}
+                {% if row.amount is not none %}
+                  <tr>
+                    <td>{{ row.period | month_label }}</td>
+                    <td class="num">{{ row.amount | money }}</td>
+                    <td class="tiny muted">{{ row.status }}</td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="tiny muted mt">
+            Average {{ (amounts | sum / amounts | length) | money }} ·
+            highest {{ amounts | max | money }}
+          </p>
+        {% else %}
+          <p class="muted tiny">No history yet — it builds as months go by.</p>
+        {% endif %}
+      </div>
+
+      <form method="post" action="{{ url_for('money.delete_payee', payee_id=payee.id) }}"
+            class="mt" data-confirm="Delete {{ payee.name }} and all its payment history?">
+        {{ csrf_field() }}
+        <button class="btn btn-danger btn-sm">Delete this company</button>
+      </form>
+    {% else %}
+      <div class="card">
+        <div class="card-head"><h3>Tip</h3></div>
+        <p class="tiny muted">
+          Put the real payment page in <b>Payment link</b> — the one you land on
+          after signing in. It becomes a Pay button on the month view and the
+          home page, so paying a bill is two clicks from opening the portal.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Accounts · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Accounts</h1>
+    <p>Savings, retirement, and anything owed. Net worth {{ net_worth | money_short }}.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('money.recurring') }}">Recurring items</a>
+    <a class="btn btn-primary" href="{{ url_for('money.new_account') }}">＋ Add account</a>
+  </div>
+</div>
+
+{% if grouped %}
+  {% for kind, accounts in grouped %}
+    <div class="card mb">
+      <div class="card-head">
+        <h2>{{ kinds.get(kind, kind | title) }}</h2>
+        <span class="tiny muted">
+          {{ accounts | sum(attribute='balance') | money_short }}
+        </span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>As of</th>
+              <th class="num">Balance</th>
+              <th class="num">Change</th>
+              <th>Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for account in accounts %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('money.edit_account', account_id=account.id) }}">
+                    <b>{{ account.name }}</b>
+                  </a>
+                  {% if account.institution %}
+                    <div class="tiny muted">{{ account.institution }}</div>
+                  {% endif %}
+                  {% if account.monthly_contribution %}
+                    <span class="pill">+{{ account.monthly_contribution | money_short }}/mo</span>
+                  {% endif %}
+                </td>
+                <td class="tiny muted nowrap">
+                  {{ account.as_of | humandate if account.as_of else 'never' }}
+                </td>
+                <td class="num"><b>{{ account.balance | money }}</b></td>
+                <td class="num tiny">
+                  {% set change = account.change_over(1) %}
+                  {% if change is not none %}
+                    <span style="color:var({{ '--good' if change >= 0 else '--bad' }})">
+                      {{ '+' if change > 0 }}{{ change | money_short }}
+                    </span>
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  <form method="post" action="{{ url_for('money.add_balance', account_id=account.id) }}"
+                        class="flex">
+                    {{ csrf_field() }}
+                    <input type="text" name="balance" placeholder="new balance"
+                           style="width:8rem" inputmode="decimal">
+                    <button class="btn btn-sm">Save</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endfor %}
+
+  <p class="tiny muted">
+    Each save keeps a dated snapshot, so the change column and the forecast get
+    more useful the longer you keep it up.
+  </p>
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🏦</span>
+    <p>No accounts yet. Add savings, the TSP, and anything owed to see net worth and a forecast.</p>
+    <a class="btn btn-primary" href="{{ url_for('money.new_account') }}">Add an account</a>
+  </div>
+{% endif %}
+{% endblock %}

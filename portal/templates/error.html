@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ site_name }}{% endblock %}
+
+{% macro body() %}
+  <div class="card" style="max-width:460px;margin:3rem auto;text-align:center">
+    <div style="font-size:2.5rem">{{ {403:'🔒',404:'🧭',500:'🔧'}.get(code,'⚠️') }}</div>
+    <h1>{{ title }}</h1>
+    <p class="muted">{{ message }}</p>
+    <a class="btn btn-primary" href="{{ url_for('dashboard.index') }}">Back home</a>
+  </div>
+{% endmacro %}
+
+{% block content %}{{ body() }}{% endblock %}
+{% block anon_content %}
+  <div style="min-height:100vh;display:grid;place-items:center;padding:1.5rem">{{ body() }}</div>
+{% endblock %}

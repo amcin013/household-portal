@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Shopping list · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Shopping list</h1>
+    <p>Pick recipes and how many you are making. Matching ingredients get added up.</p>
+  </div>
+  {% if items or loose %}
+    <div class="page-actions no-print">
+      <button class="btn" onclick="window.print()">🖨️ Print</button>
+    </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-2">
+  <form method="post" class="card no-print">
+    {{ csrf_field() }}
+    <div class="card-head"><h2>Recipes</h2></div>
+
+    {% if all_recipes %}
+      <div style="max-height:26rem;overflow-y:auto">
+        {% set chosen = selections | map(attribute=0) | map(attribute='id') | list %}
+        {% for recipe in all_recipes %}
+          <div class="list-row" style="padding:.35rem 0">
+            <input type="checkbox" name="recipe_id" value="{{ recipe.id }}"
+                   id="r{{ recipe.id }}" {{ 'checked' if recipe.id in chosen }}
+                   style="width:auto">
+            <label for="r{{ recipe.id }}" class="grow truncate" style="margin:0;font-weight:400">
+              {{ recipe.title }}
+            </label>
+            <input type="number" name="servings_{{ recipe.id }}" min="1" max="200"
+                   value="{{ recipe.servings }}" style="width:4.5rem"
+                   aria-label="Servings for {{ recipe.title }}">
+          </div>
+        {% endfor %}
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary">Build list</button>
+      </div>
+    {% else %}
+      <p class="muted tiny">
+        No recipes yet. <a href="{{ url_for('recipes.new') }}">Add one →</a>
+      </p>
+    {% endif %}
+  </form>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>List</h2>
+      {% if items %}<span class="tiny muted">{{ items|length }} items</span>{% endif %}
+    </div>
+
+    {% if selections %}
+      <p class="tiny muted">
+        For: {% for recipe, servings in selections %}{{ recipe.title }}
+        ({{ servings }}){{ ', ' if not loop.last }}{% endfor %}
+      </p>
+    {% endif %}
+
+    {% if items or loose %}
+      <ul class="ingredients">
+        {% for item in items %}
+          <li>
+            <span class="ing-qty">{{ item.quantity | qty }}{% if item.unit %} {{ item.unit }}{% endif %}</span>
+            <span class="grow">
+              {{ item.item }}
+              {% if item['from'] | length > 1 %}
+                <span class="ing-note">({{ item['from'] | join(' + ') }})</span>
+              {% endif %}
+            </span>
+          </li>
+        {% endfor %}
+        {% for item in loose %}
+          <li>
+            <span class="ing-qty muted">—</span>
+            <span class="grow">
+              {{ item.item }}
+              {% if item.note %}<span class="ing-note">, {{ item.note }}</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="tiny muted mt no-print">Tap an item to check it off.</p>
+    {% else %}
+      <div class="empty">
+        <span class="e-icon">🛒</span>
+        <p>Choose some recipes and press <b>Build list</b>.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

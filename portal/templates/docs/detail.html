@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ page.icon or '' }} {{ page.title }}</h1>
+    <p>
+      {{ page.category }}
+      {% if page.is_essential %}<span class="pill pill-accent">essential</span>{% endif %}
+      · updated {{ page.updated_at | timeago }}
+      {% if page.updated_by %} by {{ page.updated_by.display_name }}{% endif %}
+    </p>
+    {% if page.tag_list %}
+      <div class="chips mt">
+        {% for t in page.tag_list %}<span class="chip">{{ t }}</span>{% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="page-actions no-print">
+    <form method="post" action="{{ url_for('docs.toggle_pin', slug=page.slug) }}" class="inline-form">
+      {{ csrf_field() }}
+      <button class="btn" title="Pin to home">{{ '📌' if page.pinned else '📍' }}</button>
+    </form>
+    <button class="btn" onclick="window.print()">🖨️</button>
+    <a class="btn" href="{{ url_for('docs.history', slug=page.slug) }}">History</a>
+    <a class="btn btn-primary" href="{{ url_for('docs.edit', slug=page.slug) }}">Edit</a>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr minmax(0,220px);align-items:start;gap:1.5rem">
+  <div class="card">
+    <div class="prose">
+      {% if page.body %}{{ page.body | markdown }}
+      {% else %}<p class="muted">This page is empty.
+        <a href="{{ url_for('docs.edit', slug=page.slug) }}">Write something →</a></p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="no-print">
+    {% if related %}
+      <div class="card">
+        <div class="card-head"><h3>More in {{ page.category }}</h3></div>
+        <ul class="list">
+          {% for other in related %}
+            <li>
+              <a href="{{ url_for('docs.detail', slug=other.slug) }}">
+                {{ other.icon or '📄' }} {{ other.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h3>Page</h3></div>
+      <p class="tiny muted">
+        {{ page.revisions | length }} earlier version{{ 's' if page.revisions|length != 1 }}.
+        Nothing is ever overwritten for good —
+        <a href="{{ url_for('docs.history', slug=page.slug) }}">see the history</a>.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

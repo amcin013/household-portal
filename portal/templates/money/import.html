@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Import a spreadsheet · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Import a spreadsheet</h1>
+    <p>Bring in the sheet you already keep. Nothing is saved until you confirm.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <form method="post" enctype="multipart/form-data" class="card">
+    {{ csrf_field() }}
+    <div class="field">
+      <label for="file">Excel or CSV file</label>
+      <input type="file" id="file" name="file" accept=".xlsx,.xlsm,.csv,.tsv" required>
+      <div class="hint">
+        Any layout is fine. The next screen shows which column it thinks is
+        which, and you can correct it.
+      </div>
+    </div>
+    <button class="btn btn-primary">Read the file</button>
+  </form>
+
+  <div class="card">
+    <div class="card-head"><h2>How it works</h2></div>
+    <ol class="tiny" style="padding-left:1.2rem;line-height:1.7">
+      <li>Upload the file. Nothing is written yet.</li>
+      <li>
+        It finds the header row and guesses which column holds the company
+        name, the amount, the due day, and so on.
+      </li>
+      <li>You fix any wrong guesses and pick where the rows should land —
+        bills, accounts, or recurring items.</li>
+      <li>Confirm, and it imports.</li>
+    </ol>
+    <p class="tiny muted mt">
+      Matching is by name, so importing the same sheet twice updates the
+      existing entries rather than duplicating them.
+    </p>
+    <hr>
+    <p class="tiny muted">
+      Going the other way, <a href="{{ url_for('money.export') }}">export a
+      workbook</a> with bills, accounts, recurring items, and full payment
+      history on separate sheets.
+    </p>
+  </div>
+</div>
+{% endblock %}

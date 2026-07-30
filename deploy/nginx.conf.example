@@ -1,0 +1,41 @@
+# nginx in front of the portal.
+#
+#   sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/household-portal
+#   sudo ln -s /etc/nginx/sites-available/household-portal /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# For a certificate:  sudo certbot --nginx -d portal.example.com
+# Certbot rewrites this file to add the TLS bits and the redirect.
+#
+# LAN only? You can skip nginx entirely - gunicorn on 0.0.0.0:8000 is enough.
+# Change the --bind in the systemd unit and set BEHIND_PROXY=0.
+
+server {
+    listen 80;
+    server_name portal.example.com;
+
+    # Recipe photos and spreadsheet uploads.
+    client_max_body_size 16M;
+
+    access_log /var/log/nginx/household-portal.access.log;
+    error_log  /var/log/nginx/household-portal.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+
+        # BEHIND_PROXY=1 in .env makes the app trust these.
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 60s;
+    }
+
+    # Let nginx serve the CSS and JS directly.
+    location /static/ {
+        alias /opt/household-portal/portal/static/;
+        expires 7d;
+        access_log off;
+    }
+}

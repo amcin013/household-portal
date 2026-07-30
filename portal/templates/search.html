@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Search: ' + q if q else 'Search' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if q %}“{{ q }}”{% else %}Search{% endif %}</h1>
+    {% if q %}<p>{{ total }} result{{ 's' if total != 1 }}</p>{% endif %}
+  </div>
+</div>
+
+{% if not q %}
+  <div class="empty">
+    <span class="e-icon">🔍</span>
+    <p>Search recipes, how-to pages, links, bills, and places all at once.</p>
+    <p class="tiny">Tip: press <code>/</code> anywhere to jump to the search box.</p>
+  </div>
+{% elif groups %}
+  {% for group in groups %}
+    <div class="card mb">
+      <div class="card-head">
+        <h2>{{ group.icon }} {{ group.label }}</h2>
+        <span class="tiny muted">{{ group['items'] | length }}</span>
+      </div>
+      <ul class="list">
+        {% for item in group['items'] %}
+          <li>
+            {% if item.get('external') %}
+              <a href="{{ item.external }}" target="_blank" rel="noopener">{{ item.title }} ↗</a>
+            {% elif item.get('endpoint') %}
+              <a href="{{ url_for(item.endpoint, **item.get('params', {})) }}">{{ item.title }}</a>
+            {% else %}
+              {{ item.title }}
+            {% endif %}
+            {% if item.detail %}<div class="tiny muted">{{ item.detail }}</div>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🤷</span>
+    <p>Nothing matched “{{ q }}”.</p>
+  </div>
+{% endif %}
+{% endblock %}

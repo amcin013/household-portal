@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Links · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Links</h1>
+    <p>{{ total }} link{{ 's' if total != 1 }} · pinned ones show on the home page</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{{ url_for('links.new') }}">＋ Add link</a>
+  </div>
+</div>
+
+{% if grouped %}
+  {% for category, links in grouped %}
+    <div class="card mb">
+      <div class="card-head"><h2>{{ category }}</h2></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.6rem">
+        {% for link in links %}
+          <div style="position:relative">
+            <a class="link-tile" href="{{ link.url or url_for('links.edit', link_id=link.id) }}"
+               {% if link.url and link.open_new_tab %}target="_blank" rel="noopener"{% endif %}>
+              <span class="li-icon">{{ link.icon or '🔗' }}</span>
+              <span style="min-width:0;flex:1">
+                <span class="li-title">
+                  {{ link.title }}{% if link.pinned %} <span title="Pinned">📌</span>{% endif %}
+                </span>
+                <span class="li-sub">
+                  {% if link.url %}{{ link.description or link.host }}
+                  {% else %}<span class="pill pill-warn">needs an address</span>{% endif %}
+                </span>
+              </span>
+            </a>
+            <div class="flex tiny" style="margin:.25rem 0 0 .3rem">
+              <a class="muted" href="{{ url_for('links.edit', link_id=link.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('links.toggle_pin', link_id=link.id) }}" class="inline-form">
+                {{ csrf_field() }}
+                <button class="btn btn-ghost btn-sm muted" style="padding:0 .3rem">
+                  {{ 'Unpin' if link.pinned else 'Pin' }}
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🔗</span>
+    <p>No links yet — the Jellyfin server would be a good first one.</p>
+    <a class="btn btn-primary" href="{{ url_for('links.new') }}">Add a link</a>
+  </div>
+{% endif %}
+{% endblock %}

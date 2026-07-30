@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}{{ place.name }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ place.icon }} {{ place.name }}</h1>
+    <p>
+      {% if place.address %}{{ place.address }} · {% endif %}
+      {{ place.city }}{% if place.state %}, {{ place.state }}{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <form method="post" action="{{ url_for('places.refresh', slug=place.slug) }}" class="inline-form">
+      {{ csrf_field() }}
+      <button class="btn">↻ Refresh</button>
+    </form>
+    <a class="btn" href="{{ url_for('places.edit', slug=place.slug) }}">Edit</a>
+  </div>
+</div>
+
+{% if alert %}
+  <div class="alert-banner {{ 'severe' if alert.severity in ('Extreme','Severe') }}">
+    <span>⚠️</span>
+    <div>
+      <b>{{ alert.event }}</b>
+      {% if alert.severity %} · {{ alert.severity }}{% endif %}
+      {% if alert.headline %}<div class="tiny">{{ alert.headline }}</div>{% endif %}
+      {% if alert.description %}
+        <details class="tiny mt">
+          <summary>Full text</summary>
+          <p style="white-space:pre-wrap">{{ alert.description }}</p>
+        </details>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid grid-2">
+  {# ---------- weather ---------- #}
+  <div class="card">
+    <div class="card-head">
+      <h2>Weather</h2>
+      {% if weather and weather.get('current') %}
+        <span class="tiny muted">{{ weather.current.station_name or weather.current.station }}</span>
+      {% endif %}
+    </div>
+
+    {% if not place.has_coords %}
+      <p class="muted tiny">
+        Add latitude and longitude on the
+        <a href="{{ url_for('places.edit', slug=place.slug) }}">edit page</a>
+        and NOAA data shows up here.
+      </p>
+    {% elif weather and weather.get('error') and not weather.get('current') %}
+      <p class="muted tiny">{{ weather.error }}</p>
+    {% elif weather %}
+      {% set cur = weather.get('current') or {} %}
+      <div class="weather-top">
+        <div class="weather-icon">{{ cur.get('icon', '🌡️') }}</div>
+        <div>
+          <div class="weather-temp">{{ cur.get('temp_f', '--') }}°</div>
+          <div class="weather-meta">{{ cur.get('text', '') }}</div>
+          <div class="weather-meta tiny">
+            {% if cur.get('humidity') is not none %}{{ cur.humidity }}% humidity{% endif %}
+            {% if cur.get('wind_mph') is not none %} · {{ cur.wind_mph }} mph{% endif %}
+            {% if cur.get('heat_index_f') is not none %} · feels {{ cur.heat_index_f }}°{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if weather.get('periods') %}
+        <div class="weather-strip">
+          {% for p in weather.periods[:6] %}
+            <div class="weather-day" title="{{ p.short }}">
+              <div class="d-name">{{ p.name }}</div>
+              <div class="d-icon">{{ p.icon }}</div>
+              <div class="d-temp">{{ p.temp }}°</div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <details class="disclose mt">
+          <summary>Detailed forecast</summary>
+          {% for p in weather.periods[:4] %}
+            <p class="tiny"><b>{{ p.name }}</b> — {{ p.detailed }}</p>
+          {% endfor %}
+        </details>
+      {% endif %}
+
+      <p class="tiny muted mt">
+        {% if weather.get('stale') %}⚠️ Last known reading. {% endif %}
+        NOAA{% if weather.get('forecast_office') %} · {{ weather.forecast_office }}{% endif %}
+        {% if weather.get('fetched_at') %} · updated {{ weather.fetched_at | timeago }}{% endif %}
+      </p>
+    {% endif %}
+
+    {# ---------- sensors ---------- #}
+    <div class="mt" style="padding-top:1rem;border-top:1px solid var(--border)">
+      <div class="card-head"><h3>Inside</h3></div>
+
+      {% if place.sensors %}
+        {% for sensor in place.sensors %}
+          <div class="list-row" style="padding:.4rem 0">
+            <span class="grow">
+              {{ sensor.name }}
+              <span class="tiny muted">· {{ sensor.provider }}</span>
+              {% if sensor.last_error %}
+                <div class="tiny" style="color:var(--bad)">{{ sensor.last_error }}</div>
+              {% endif %}
+            </span>
+            <b class="num">
+              {% if sensor.last_value is not none %}
+                {{ sensor.last_value | round(1) }}{{ sensor.unit }}
+              {% else %}—{% endif %}
+            </b>
+            {% if sensor.last_reading_at %}
+              <span class="tiny muted nowrap">{{ sensor.last_reading_at | timeago }}</span>
+            {% endif %}
+          </div>
+
+          {% if sensor.provider == 'manual' %}
+            <form method="post" action="{{ url_for('places.set_reading', sensor_id=sensor.id) }}"
+                  class="flex" style="margin-bottom:.6rem">
+              {{ csrf_field() }}
+              <input type="text" name="value" placeholder="reading" style="width:6rem" inputmode="decimal">
+              <button class="btn btn-sm">Set</button>
+              <span class="spacer" style="flex:1"></span>
+            </form>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <p class="muted tiny">
+          No indoor sensors yet. Add one below — manual works today, and Home
+          Assistant reads a thermostat automatically.
+        </p>
+      {% endif %}
+
+      <details class="disclose mt">
+        <summary>＋ Add a sensor</summary>
+        <form method="post" action="{{ url_for('places.add_sensor', slug=place.slug) }}">
+          {{ csrf_field() }}
+          <div class="field-row">
+            <div class="field">
+              <label for="s_name">Name</label>
+              <input type="text" id="s_name" name="name" required placeholder="Living room">
+            </div>
+            <div class="field" style="max-width:8rem">
+              <label for="s_unit">Unit</label>
+              <input type="text" id="s_unit" name="unit" value="°F">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="s_provider">Where does the number come from?</label>
+            <select id="s_provider" name="provider">
+              <option value="manual">Typed in by hand</option>
+              <option value="homeassistant">Home Assistant</option>
+              <option value="http_json">Any JSON URL</option>
+            </select>
+          </div>
+
+          <details class="disclose">
+            <summary>Home Assistant settings</summary>
+            <div class="field">
+              <label for="base_url">Base URL</label>
+              <input type="text" id="base_url" name="base_url" placeholder="http://192.168.1.10:8123">
+            </div>
+            <div class="field">
+              <label for="token">Long-lived access token</label>
+              <input type="password" id="token" name="token" autocomplete="new-password">
+              <div class="hint">Home Assistant → your profile → Long-lived access tokens.</div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="entity_id">Entity ID</label>
+                <input type="text" id="entity_id" name="entity_id" placeholder="sensor.living_room_temperature">
+              </div>
+              <div class="field">
+                <label for="attribute">Attribute (optional)</label>
+                <input type="text" id="attribute" name="attribute" placeholder="current_temperature">
+              </div>
+            </div>
+            <p class="hint">
+              For a thermostat, use the <code>climate.*</code> entity with the
+              attribute <code>current_temperature</code>.
+            </p>
+          </details>
+
+          <details class="disclose">
+            <summary>JSON URL settings</summary>
+            <div class="field">
+              <label for="url">URL</label>
+              <input type="text" id="url" name="url" placeholder="http://192.168.1.42/api/temp">
+            </div>
+            <div class="field">
+              <label for="path">Path to the value</label>
+              <input type="text" id="path" name="path" placeholder="data.temperature">
+              <div class="hint">Dotted path. Use numbers for list positions, e.g. <code>readings.0.value</code>.</div>
+            </div>
+          </details>
+
+          <button class="btn btn-primary">Add sensor</button>
+        </form>
+      </details>
+    </div>
+  </div>
+
+  {# ---------- facts ---------- #}
+  <div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Good to know</h2>
+        <span class="tiny muted">{{ place.facts | length }} note{{ 's' if place.facts|length != 1 }}</span>
+      </div>
+
+      {% if facts %}
+        {% for category, rows in facts %}
+          <h3 class="tiny muted" style="text-transform:uppercase;letter-spacing:.05em;margin-top:1rem">
+            {{ category }}
+          </h3>
+          <table class="data">
+            <tbody>
+              {% for fact in rows %}
+                <tr>
+                  <td style="width:38%"><b>{{ fact.label }}</b></td>
+                  <td>
+                    {% if fact.sensitive %}
+                      <span class="secret" title="Click to show">
+                        <span class="masked">••••••••</span>
+                        <span class="revealed" style="display:none">{{ fact.value }}</span>
+                      </span>
+                    {% else %}
+                      {{ fact.value }}
+                    {% endif %}
+                  </td>
+                  <td class="right nowrap" style="width:1%">
+                    <details style="display:inline-block">
+                      <summary class="btn btn-sm btn-ghost" style="list-style:none">✎</summary>
+                      <form method="post" action="{{ url_for('places.edit_fact', fact_id=fact.id) }}"
+                            style="position:absolute;z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.75rem;min-width:16rem;box-shadow:0 8px 24px rgba(0,0,0,.25)">
+                        {{ csrf_field() }}
+                        <div class="field">
+                          <label>Label</label>
+                          <input type="text" name="label" value="{{ fact.label }}">
+                        </div>
+                        <div class="field">
+                          <label>Value</label>
+                          <textarea name="value" style="min-height:4rem">{{ fact.value or '' }}</textarea>
+                        </div>
+                        <div class="field">
+                          <label>Category</label>
+                          <input type="text" name="category" value="{{ fact.category }}">
+                        </div>
+                        <label class="check">
+                          <input type="checkbox" name="sensitive" {{ 'checked' if fact.sensitive }}>
+                          Hide until clicked
+                        </label>
+                        <button class="btn btn-sm btn-primary">Save</button>
+                      </form>
+                    </details>
+                    <form method="post" action="{{ url_for('places.delete_fact', fact_id=fact.id) }}"
+                          class="inline-form" data-confirm="Delete “{{ fact.label }}”?">
+                      {{ csrf_field() }}
+                      <button class="btn btn-sm btn-ghost muted">✕</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endfor %}
+      {% else %}
+        <p class="muted tiny">
+          Nothing written down yet. Wifi password, trash day, breaker panel
+          location, alarm code, who mows — anything the next person would need.
+        </p>
+      {% endif %}
+
+      <details class="disclose mt">
+        <summary>＋ Add a note</summary>
+        <form method="post" action="{{ url_for('places.add_fact', slug=place.slug) }}">
+          {{ csrf_field() }}
+          <div class="field-row">
+            <div class="field">
+              <label for="f_label">Label</label>
+              <input type="text" id="f_label" name="label" required placeholder="Wifi password">
+            </div>
+            <div class="field">
+              <label for="f_category">Category</label>
+              <input type="text" id="f_category" name="category" value="General" list="factCats">
+              <datalist id="factCats">
+                {% for c in ['General','Utilities','Access & codes','Trash & yard','Vendors','Insurance','Emergency'] %}
+                  <option value="{{ c }}">
+                {% endfor %}
+              </datalist>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f_value">Value</label>
+            <textarea id="f_value" name="value" style="min-height:4rem"></textarea>
+          </div>
+          <label class="check">
+            <input type="checkbox" name="sensitive">
+            Hide until clicked (codes, passwords)
+          </label>
+          <button class="btn btn-primary">Add</button>
+        </form>
+      </details>
+    </div>
+
+    {% if place.notes %}
+      <div class="card">
+        <div class="card-head"><h2>Notes</h2></div>
+        <div class="prose">{{ place.notes | markdown }}</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}{{ label }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ label }}</h1>
+    <p>{{ view.bills | length }} bills · {{ view.count_due }} still to pay</p>
+  </div>
+  <div class="page-actions">
+    <div class="month-nav">
+      <a class="btn btn-sm" href="{{ url_for('money.index', period=view.prev) }}">←</a>
+      <a class="btn btn-sm" href="{{ url_for('money.index') }}">Today</a>
+      <a class="btn btn-sm" href="{{ url_for('money.index', period=view.next) }}">→</a>
+    </div>
+    <a class="btn" href="{{ url_for('money.payees') }}">Manage bills</a>
+  </div>
+</div>
+
+<div class="stats mb">
+  <div class="stat">
+    <div class="stat-label">Bills this month</div>
+    <div class="stat-value">{{ view.total | money_short }}</div>
+  </div>
+  <div class="stat {{ 'good' if view.remaining == 0 }}">
+    <div class="stat-label">Left to pay</div>
+    <div class="stat-value">{{ view.remaining | money_short }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Income</div>
+    <div class="stat-value">{{ view.income | money_short }}</div>
+    <div class="stat-note"><a href="{{ url_for('money.recurring') }}">recurring →</a></div>
+  </div>
+  <div class="stat {{ 'good' if view.net >= 0 else 'bad' }}">
+    <div class="stat-label">Left over</div>
+    <div class="stat-value">{{ view.net | money_short }}</div>
+    <div class="stat-note">after everything</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Net worth</div>
+    <div class="stat-value">{{ net_worth | money_short }}</div>
+    <div class="stat-note"><a href="{{ url_for('money.accounts') }}">accounts →</a></div>
+  </div>
+</div>
+
+<div class="card mb">
+  <div class="card-head">
+    <h2>Bills</h2>
+    <span class="tiny muted">Click an amount to change it</span>
+  </div>
+
+  {% if view.bills %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Company</th>
+            <th>Due</th>
+            <th class="num">Amount</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bill in view.bills %}
+            <tr class="bill-row {{ 'paid' if bill.is_paid }} {{ 'overdue' if bill.status == 'due' and bill.due_date and bill.due_date < today }}">
+              <td style="width:1%">
+                <form method="post" action="{{ url_for('money.mark_paid', bill_id=bill.id) }}" class="inline-form">
+                  {{ csrf_field() }}
+                  <button class="btn btn-sm btn-ghost" title="{{ 'Mark unpaid' if bill.is_paid else 'Mark paid' }}">
+                    {{ '☑' if bill.is_paid else '☐' }}
+                  </button>
+                </form>
+              </td>
+              <td class="bill-name">
+                <b>{{ bill.payee.name }}</b>
+                {% if bill.payee.autopay %}<span class="pill">auto</span>{% endif %}
+                {% if bill.payee.account_hint %}
+                  <div class="tiny muted">{{ bill.payee.account_hint }}</div>
+                {% endif %}
+                {% if bill.note %}<div class="tiny muted">{{ bill.note }}</div>{% endif %}
+              </td>
+              <td class="nowrap">
+                {{ bill.due_date | humandate }}
+                {% if bill.status == 'due' and bill.due_date and bill.due_date < today %}
+                  <span class="pill pill-bad">late</span>
+                {% elif bill.is_paid %}
+                  <span class="pill pill-good">paid</span>
+                {% elif bill.status == 'skipped' %}
+                  <span class="pill">skipped</span>
+                {% endif %}
+              </td>
+              <td class="num">
+                <details style="display:inline-block">
+                  <summary style="list-style:none;cursor:pointer">
+                    <b>{{ bill.amount | money }}</b>
+                  </summary>
+                  <form method="post" action="{{ url_for('money.update_bill', bill_id=bill.id) }}"
+                        style="position:absolute;right:1rem;z-index:5;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:.75rem;min-width:15rem;box-shadow:0 8px 24px rgba(0,0,0,.25)">
+                    {{ csrf_field() }}
+                    <div class="field">
+                      <label>Amount</label>
+                      <input type="text" name="amount" value="{{ bill.amount }}" inputmode="decimal">
+                    </div>
+                    <div class="field">
+                      <label>Due date</label>
+                      <input type="date" name="due_date"
+                             value="{{ bill.due_date.isoformat() if bill.due_date }}">
+                    </div>
+                    <div class="field">
+                      <label>Status</label>
+                      <select name="status">
+                        <option value="due" {{ 'selected' if bill.status == 'due' }}>Due</option>
+                        <option value="paid" {{ 'selected' if bill.status == 'paid' }}>Paid</option>
+                        <option value="skipped" {{ 'selected' if bill.status == 'skipped' }}>Skipped</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Note</label>
+                      <input type="text" name="note" value="{{ bill.note or '' }}">
+                    </div>
+                    <button class="btn btn-sm btn-primary">Save</button>
+                  </form>
+                </details>
+              </td>
+              <td style="width:1%">
+                {% if bill.payee.pay_url %}
+                  <a class="btn btn-sm btn-primary" href="{{ bill.payee.pay_url }}"
+                     target="_blank" rel="noopener">Pay ↗</a>
+                {% elif bill.payee.login_url %}
+                  <a class="btn btn-sm" href="{{ bill.payee.login_url }}"
+                     target="_blank" rel="noopener">Log in ↗</a>
+                {% endif %}
+              </td>
+              <td style="width:1%">
+                <a class="btn btn-sm btn-ghost muted"
+                   href="{{ url_for('money.edit_payee', payee_id=bill.payee.id) }}">⚙</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td><b>Total</b></td>
+            <td class="tiny muted">{{ view.paid | money_short }} paid</td>
+            <td class="num"><b>{{ view.total | money }}</b></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <span class="e-icon">💵</span>
+      <p>No bills set up yet.</p>
+      <div class="flex" style="justify-content:center">
+        <a class="btn btn-primary" href="{{ url_for('money.new_payee') }}">Add a company</a>
+        <a class="btn" href="{{ url_for('money.import_sheet') }}">Import a spreadsheet</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Where it goes</h2>
+      <a class="card-link" href="{{ url_for('money.forecast') }}">Forecast →</a>
+    </div>
+    {% if view.by_category %}
+      {% set biggest = view.by_category[0][1] or 1 %}
+      {% for category, amount in view.by_category %}
+        <div style="margin-bottom:.6rem">
+          <div class="flex-between tiny" style="margin-bottom:.2rem">
+            <span>{{ category }}</span>
+            <b class="num">{{ amount | money_short }}</b>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:{{ (amount / biggest * 100) | round(1) }}%"></div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="muted tiny">Nothing to chart yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Last six months</h2>
+      <a class="card-link" href="{{ url_for('money.export') }}">Export .xlsx →</a>
+    </div>
+    {% set peak = (history | map(attribute='total') | max) or 1 %}
+    <div class="mini-bars mb">
+      {% for row in history %}
+        <div class="mb" style="height:{{ ((row.total / peak) * 100) | round(1) }}%"
+             title="{{ row.period | month_label }}: {{ row.total | money_short }}"></div>
+      {% endfor %}
+    </div>
+    <table class="data">
+      <tbody>
+        {% for row in history | reverse %}
+          <tr>
+            <td>{{ row.period | month_label }}</td>
+            <td class="num">{{ row.total | money_short }}</td>
+            <td class="num tiny muted">{{ row.paid | money_short }} paid</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
