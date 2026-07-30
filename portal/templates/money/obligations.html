@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Obligations · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Obligations</h1>
+    <p>Balances being paid down, and the payments that do it.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{{ url_for('obligations.new') }}">＋ Add obligation</a>
+  </div>
+</div>
+
+{% if obligations %}
+  <div class="stats mb">
+    <div class="stat">
+      <div class="stat-label">Still owed</div>
+      <div class="stat-value">{{ total_owed | money_short }}</div>
+    </div>
+    <div class="stat {{ 'warn' if uncleared }}">
+      <div class="stat-label">Not yet cleared</div>
+      <div class="stat-value">{{ uncleared }}</div>
+      <div class="stat-note">payments out</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    {% for ob in obligations %}
+      <div class="card" {{ 'style=opacity:.6' if not ob.active }}>
+        <div class="card-head">
+          <h2>
+            <a href="{{ url_for('obligations.detail', slug=ob.slug) }}"
+               style="text-decoration:none;color:inherit">{{ ob.name }}</a>
+          </h2>
+          <span class="pill">{{ kinds.get(ob.kind, ob.kind) }}</span>
+        </div>
+
+        {% if ob.owed_to %}<p class="tiny muted">Paid to {{ ob.owed_to }}</p>{% endif %}
+
+        <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">
+          <div class="stat {{ 'good' if ob.is_settled }}">
+            <div class="stat-label">Balance</div>
+            <div class="stat-value">{{ ob.balance | money_short }}</div>
+          </div>
+          {% if ob.payments_remaining %}
+            <div class="stat">
+              <div class="stat-label">Left to pay</div>
+              <div class="stat-value">{{ ob.payments_remaining }}</div>
+              <div class="stat-note">× {{ ob.payment_amount | money_short }}</div>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="bar-track mt">
+          <div class="bar-fill" style="width:{{ (ob.progress * 100) | round(1) }}%"></div>
+        </div>
+        <p class="tiny muted" style="margin:.35rem 0 0">
+          {{ ob.total_paid | money_short }} paid of
+          {{ (ob.opening_balance + ob.total_charged) | money_short }}
+          {% if ob.uncleared %}
+            · <span class="pill pill-warn">{{ ob.uncleared|length }} not cleared</span>
+          {% endif %}
+        </p>
+
+        {% set payoff = ob.payoff_date() %}
+        {% if payoff and not ob.is_settled %}
+          <p class="tiny muted">Clear around {{ payoff | humandate }} at this rate.</p>
+        {% elif ob.is_settled %}
+          <p class="tiny"><span class="pill pill-good">settled</span></p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">
+    <span class="e-icon">🧾</span>
+    <p>
+      Nothing here yet. This is for a balance that gets paid off rather than
+      billed forever — child support, a share of the kids' medical bills, a loan.
+    </p>
+    <p class="tiny">
+      Unlike a company bill, what matters is the balance left and how many
+      payments remain, worked out from what you have actually recorded.
+    </p>
+    <a class="btn btn-primary" href="{{ url_for('obligations.new') }}">Add the first one</a>
+  </div>
+{% endif %}
+{% endblock %}

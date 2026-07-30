@@ -74,6 +74,36 @@ sensor form.
 
 ---
 
+## Smart Meter Texas (working)
+
+The route to electricity usage in Texas, and worth understanding because it is
+not where most people look first.
+
+Texas is deregulated: you buy electricity from a retailer (TXU and the like),
+but the meter on the house belongs to the wires company — Oncor around
+Pflugerville, CenterPoint and AEP elsewhere. The readings are the wires
+company's, so they come from
+[smartmetertexas.com](https://www.smartmetertexas.com), not from your retailer's
+website.
+
+Two consequences worth knowing:
+
+- **Switching retailer does not lose the history.** The meter did not change,
+  so neither did the data.
+- **You do not need your retailer's cooperation.** Register directly at Smart
+  Meter Texas with the ESIID off a bill.
+
+It holds **13 months** of 15-minute interval data and offers two exports:
+*Export* gives a CSV (`USAGE_DATE`, `USAGE_START_TIME`, `USAGE_KWH`), and *Green
+Button Download My Data* gives ESPI XML. The portal reads both, and totals
+either to months.
+
+Gas and water are patchier. Atmos and most city water utilities show usage in
+the account portal but have no Green Button; if all you can get is a table on
+screen, typing one number off each bill is twelve numbers a year.
+
+---
+
 ## Bills by email (not built — worth discussing)
 
 You asked whether bill amounts could be pulled out of Gmail automatically. It is

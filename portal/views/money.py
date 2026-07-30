@@ -9,7 +9,9 @@ from flask_login import login_required
 
 from ..extensions import db
 from ..models import Account, AccountSnapshot, BillPayment, LedgerItem, Payee, Place
-from ..services import importers, money as money_service
+from ..services import (
+    importers, money as money_service, staging, usage as usage_service,
+)
 from ..util import current_period, month_label, shift_period
 
 bp = Blueprint("money", __name__, url_prefix="/money")
@@ -128,12 +130,27 @@ def edit_payee(payee_id):
         db.session.commit()
         flash("Saved.", "success")
         return redirect(url_for("money.payees"))
+    readings = usage_service.usage_history(payee, 24)
+    latest = [r for r in readings if r["usage"]]
+    comparison = None
+    if len(latest) >= 1:
+        # Against the same month last year, which is the only fair comparison
+        # for anything weather-driven.
+        newest = latest[-1]["period"]
+        comparison = usage_service.compare_periods(
+            payee, newest, shift_period(newest, -12)
+        ) or usage_service.compare_periods(payee, newest, shift_period(newest, -1))
+
     return render_template(
         "money/payee_edit.html",
         payee=payee,
         categories=CATEGORIES,
         places=Place.query.order_by(Place.name).all(),
         history=money_service.payee_history(payee, 12),
+        readings=readings,
+        has_usage=bool(latest),
+        comparison=comparison,
+        units=usage_service.UNIT_LABELS,
     )
 
 
@@ -297,24 +314,46 @@ def forecast():
 @bp.route("/import", methods=["GET", "POST"])
 @login_required
 def import_sheet():
-    """Step one: read the file, guess the columns, show what we found."""
+    """Step one: read the file, work out its shape, show what we found."""
     if request.method == "POST":
         upload = request.files.get("file")
         if not upload or not upload.filename:
             flash("Choose a .xlsx or .csv file first.", "error")
             return redirect(url_for("money.import_sheet"))
+
+        sheet = (request.form.get("sheet") or "").strip() or None
         try:
-            headers, rows = importers.read_table(upload)
+            grid = importers.read_grid(upload, sheet)
         except Exception as exc:
             flash(f"Could not read that file: {exc}", "error")
             return redirect(url_for("money.import_sheet"))
 
-        if not headers:
+        if not grid:
             flash("That file looked empty.", "error")
             return redirect(url_for("money.import_sheet"))
 
-        session["import_headers"] = headers
-        session["import_rows"] = rows[:500]
+        # A sheet with months across the top is a different animal from a
+        # simple list, and importing it as a list would throw away the history.
+        periods, items = importers.read_matrix(grid)
+        if periods and items:
+            staging.save({
+                "kind": "matrix",
+                "items": [{"name": i["name"], "values": i["values"]} for i in items],
+            })
+            return render_template(
+                "money/import_matrix.html",
+                periods=periods,
+                items=items,
+                sheets=importers.sheet_names(upload),
+                current_sheet=sheet,
+                total_records=sum(i["months"] for i in items),
+                grand_total=sum(i["total"] for i in items),
+                places=Place.query.order_by(Place.name).all(),
+                categories=CATEGORIES,
+            )
+
+        headers, rows = importers.grid_to_table(grid)
+        staging.save({"kind": "table", "headers": headers, "rows": rows[:500]})
         mapping = importers.guess_mapping(headers)
         return render_template(
             "money/import_map.html",
@@ -328,12 +367,107 @@ def import_sheet():
     return render_template("money/import.html")
 
 
+@bp.route("/import/matrix", methods=["POST"])
+@login_required
+def import_matrix_confirm():
+    """Commit a wide sheet: one payee per row, one bill per month."""
+    staged = staging.load() or {}
+    items = staged.get("items") if staged.get("kind") == "matrix" else None
+    if not items:
+        flash("That upload expired. Please pick the file again.", "error")
+        return redirect(url_for("money.import_sheet"))
+
+    keep = set(request.form.getlist("include"))
+    chosen = [i for i in items if i["name"] in keep] if keep else items
+    if not chosen:
+        flash("Nothing was selected.", "error")
+        return redirect(url_for("money.import_sheet"))
+
+    result = importers.import_matrix(
+        chosen,
+        place_id=_int(request.form.get("place_id")) or None,
+        category=(request.form.get("category") or "Utilities").strip(),
+        replace=request.form.get("replace") == "on",
+    )
+    staging.discard()
+    flash(
+        f"Imported {result['bills_added']:,} months across "
+        f"{result['payees_added']} new companies "
+        f"({result['payees_updated']} already existed).",
+        "success",
+    )
+    return redirect(url_for("money.payees"))
+
+
+# --- meter readings -------------------------------------------------------
+@bp.route("/usage", methods=["GET", "POST"])
+@login_required
+def usage_import():
+    """Green Button, Smart Meter Texas, or any CSV with dates and numbers."""
+    if request.method == "POST":
+        payee = db.session.get(Payee, _int(request.form.get("payee_id")) or 0)
+        upload = request.files.get("file")
+        if payee is None:
+            flash("Choose which company the readings belong to.", "error")
+            return redirect(url_for("money.usage_import"))
+        if not upload or not upload.filename:
+            flash("Choose a file first.", "error")
+            return redirect(url_for("money.usage_import"))
+
+        try:
+            unit, totals = usage_service.read_usage_file(
+                upload, request.form.get("unit") or None
+            )
+        except Exception as exc:
+            flash(f"Could not read that file: {exc}", "error")
+            return redirect(url_for("money.usage_import"))
+
+        result = usage_service.apply_usage(
+            payee, unit, totals,
+            source="import",
+            overwrite=request.form.get("overwrite") == "on",
+            only_complete=request.form.get("keep_partial") != "on",
+        )
+        parts = [f"{result['written']} months of usage written to {payee.name}"]
+        if result["skipped_no_bill"]:
+            parts.append(f"{result['skipped_no_bill']} had no bill to attach to")
+        if result["skipped_partial"]:
+            parts.append(f"{result['skipped_partial']} part-months skipped")
+        flash(". ".join(parts) + ".", "success" if result["written"] else "warning")
+        return redirect(url_for("money.edit_payee", payee_id=payee.id))
+
+    return render_template(
+        "money/usage_import.html",
+        payees=Payee.query.order_by(Payee.name).all(),
+        units=usage_service.UNIT_LABELS,
+    )
+
+
+@bp.route("/bills/<int:bill_id>/usage", methods=["POST"])
+@login_required
+def set_usage(bill_id):
+    """Type a reading straight off a paper bill."""
+    bill = db.get_or_404(BillPayment, bill_id)
+    bill.usage = _float(request.form.get("usage"))
+    bill.service_days = _int(request.form.get("service_days"))
+    bill.usage_unit = (
+        (request.form.get("usage_unit") or "").strip() or bill.payee.usage_unit
+    )
+    if bill.usage is not None:
+        bill.usage_source = "manual"
+    db.session.commit()
+    flash(f"Usage recorded for {bill.payee.name}.", "success")
+    return redirect(request.referrer or url_for("money.edit_payee",
+                                                payee_id=bill.payee_id))
+
+
 @bp.route("/import/confirm", methods=["POST"])
 @login_required
 def import_confirm():
     """Step two: apply the confirmed mapping."""
-    headers = session.get("import_headers")
-    rows = session.get("import_rows")
+    staged = staging.load() or {}
+    headers = staged.get("headers")
+    rows = staged.get("rows")
     if not headers or not rows:
         flash("That upload expired. Please pick the file again.", "error")
         return redirect(url_for("money.import_sheet"))
@@ -373,8 +507,7 @@ def import_confirm():
         )
         noun = "recurring items"
 
-    session.pop("import_headers", None)
-    session.pop("import_rows", None)
+    staging.discard()
     flash(f"Imported {noun}: {created} added, {updated} updated.", "success")
     return redirect(url_for("money.payees" if target == "payees" else "money.accounts"))
 
@@ -433,6 +566,8 @@ def _apply_payee(payee, form):
     payee.login_url = (form.get("login_url") or "").strip() or None
     payee.phone = (form.get("phone") or "").strip() or None
     payee.account_hint = (form.get("account_hint") or "").strip() or None
+    payee.usage_unit = (form.get("usage_unit") or "").strip() or None
+    payee.meter_number = (form.get("meter_number") or "").strip() or None
     payee.notes = form.get("notes")
     payee.autopay = form.get("autopay") == "on"
     payee.variable_amount = form.get("variable_amount") == "on"

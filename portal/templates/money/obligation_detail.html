@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}{{ ob.name }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ ob.name }}</h1>
+    <p>
+      {{ kinds.get(ob.kind, ob.kind) }}
+      {% if ob.owed_to %} · paid to {{ ob.owed_to }}{% endif %}
+      {% if ob.account_hint %} · from {{ ob.account_hint }}{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('obligations.edit', slug=ob.slug) }}">Edit</a>
+  </div>
+</div>
+
+<div class="stats mb">
+  <div class="stat {{ 'good' if ob.is_settled }}">
+    <div class="stat-label">Balance</div>
+    <div class="stat-value">{{ ob.balance | money_short }}</div>
+    <div class="stat-note">
+      {% if ob.is_settled %}settled{% else %}still owed{% endif %}
+    </div>
+  </div>
+  {% if ob.payments_remaining %}
+    <div class="stat">
+      <div class="stat-label">Payments left</div>
+      <div class="stat-value">{{ ob.payments_remaining }}</div>
+      <div class="stat-note">at {{ ob.payment_amount | money_short }}</div>
+    </div>
+  {% endif %}
+  <div class="stat">
+    <div class="stat-label">Paid so far</div>
+    <div class="stat-value">{{ ob.total_paid | money_short }}</div>
+  </div>
+  {% if ob.total_scheduled %}
+    <div class="stat">
+      <div class="stat-label">Written, not sent</div>
+      <div class="stat-value">{{ ob.total_scheduled | money_short }}</div>
+      <div class="stat-note">→ {{ ob.projected_balance | money_short }} after</div>
+    </div>
+  {% endif %}
+  {% set payoff = ob.payoff_date() %}
+  {% if payoff and not ob.is_settled %}
+    <div class="stat">
+      <div class="stat-label">Clear by</div>
+      <div class="stat-value" style="font-size:1.1rem">{{ payoff | humandate }}</div>
+      <div class="stat-note">at this rate</div>
+    </div>
+  {% endif %}
+</div>
+
+{% if ob.uncleared %}
+  <div class="alert-banner">
+    <span>⏳</span>
+    <span>
+      <b>{{ ob.uncleared|length }} payment{{ 's' if ob.uncleared|length != 1 }}</b>
+      sent but not marked cleared:
+      {% for e in ob.uncleared[:4] %}
+        {{ e.label }} ({{ e.amount | money_short }}){{ ', ' if not loop.last }}
+      {% endfor %}.
+      Tick them off once they show on the statement.
+    </span>
+  </div>
+{% endif %}
+
+<div class="grid" style="grid-template-columns:1fr minmax(0,320px);align-items:start;gap:1.25rem">
+  <div class="card">
+    <div class="card-head">
+      <h2>Ledger</h2>
+      <span class="tiny muted">newest first</span>
+    </div>
+
+    {% if ledger %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>What</th>
+              <th>Status</th>
+              <th class="num">Amount</th>
+              <th class="num">Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in ledger %}
+              {% set e = row.entry %}
+              <tr {{ 'style=opacity:.5' if e.status == 'void' }}>
+                <td class="nowrap">{{ e.happened_on | humandate }}</td>
+                <td>
+                  {{ e.label }}
+                  {% if e.note %}<div class="tiny muted">{{ e.note }}</div>{% endif %}
+                </td>
+                <td>
+                  {% if e.is_charge %}
+                    <span class="pill pill-warn">charge</span>
+                  {% elif e.status == 'cleared' %}
+                    <span class="pill pill-good">cleared</span>
+                    {% if e.cleared_on %}
+                      <div class="tiny muted">{{ e.cleared_on | humandate }}</div>
+                    {% endif %}
+                  {% elif e.status == 'sent' %}
+                    <span class="pill">sent</span>
+                  {% elif e.status == 'scheduled' %}
+                    <span class="pill">written</span>
+                  {% else %}
+                    <span class="pill">void</span>
+                  {% endif %}
+                </td>
+                <td class="num" style="color:var({{ '--bad' if e.is_charge else '--good' }})">
+                  {{ '+' if e.is_charge else '−' }}{{ e.amount | money }}
+                </td>
+                <td class="num">{{ row.balance | money }}</td>
+                <td class="right nowrap" style="width:1%">
+                  {% if not e.is_charge and e.status == 'sent' %}
+                    <form method="post" action="{{ url_for('obligations.update_entry', entry_id=e.id) }}"
+                          class="inline-form">
+                      {{ csrf_field() }}
+                      <input type="hidden" name="action" value="clear">
+                      <button class="btn btn-sm" title="Mark cleared">✓</button>
+                    </form>
+                  {% elif not e.is_charge and e.status == 'scheduled' %}
+                    <form method="post" action="{{ url_for('obligations.update_entry', entry_id=e.id) }}"
+                          class="inline-form">
+                      {{ csrf_field() }}
+                      <input type="hidden" name="action" value="send">
+                      <button class="btn btn-sm" title="Mark sent">→</button>
+                    </form>
+                  {% endif %}
+                  <form method="post" action="{{ url_for('obligations.update_entry', entry_id=e.id) }}"
+                        class="inline-form" data-confirm="Remove this entry?">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="action" value="delete">
+                    <button class="btn btn-sm btn-ghost muted">✕</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <span class="e-icon">🧾</span>
+        <p>Nothing recorded yet. Add a payment or a charge on the right.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card mb">
+      <div class="card-head"><h3>Record a payment</h3></div>
+      <form method="post" action="{{ url_for('obligations.add_entry', slug=ob.slug) }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="kind" value="payment">
+
+        <div class="field-row">
+          <div class="field">
+            <label for="amount">Amount</label>
+            <input type="text" id="amount" name="amount" inputmode="decimal" required
+                   value="{{ ob.payment_amount or '' }}">
+          </div>
+          <div class="field">
+            <label for="check_number">Check #</label>
+            <input type="text" id="check_number" name="check_number"
+                   value="{{ ob.next_check_number or '' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="happened_on">Date</label>
+          <input type="date" id="happened_on" name="happened_on"
+                 value="{{ today.isoformat() }}">
+        </div>
+
+        <div class="field">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <option value="sent">Sent</option>
+            <option value="cleared">Already cleared</option>
+            <option value="scheduled">Written, not sent yet</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="note">Note</label>
+          <input type="text" id="note" name="note">
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center">
+          Record payment
+        </button>
+      </form>
+    </div>
+
+    <details class="disclose">
+      <summary>＋ Add a charge</summary>
+      <p class="tiny muted">
+        A new bill arriving increases what is owed. For a medical share, enter
+        your half.
+      </p>
+      <form method="post" action="{{ url_for('obligations.add_entry', slug=ob.slug) }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="kind" value="charge">
+        <div class="field">
+          <label for="charge_amount">Amount</label>
+          <input type="text" id="charge_amount" name="amount" inputmode="decimal" required>
+        </div>
+        <div class="field">
+          <label for="charge_date">Date</label>
+          <input type="date" id="charge_date" name="happened_on" value="{{ today.isoformat() }}">
+        </div>
+        <div class="field">
+          <label for="charge_note">What for</label>
+          <input type="text" id="charge_note" name="note" placeholder="ER visit, March">
+        </div>
+        <button class="btn">Add charge</button>
+      </form>
+    </details>
+
+    <details class="disclose">
+      <summary>Write the next several checks</summary>
+      <p class="tiny muted">
+        Creates a run of payments marked "written, not sent", numbered in
+        sequence — so you can see what is committed without pretending it is
+        paid.
+      </p>
+      <form method="post" action="{{ url_for('obligations.schedule', slug=ob.slug) }}">
+        {{ csrf_field() }}
+        <div class="field-row">
+          <div class="field">
+            <label for="count">How many</label>
+            <input type="number" id="count" name="count" min="1" max="60" value="6">
+          </div>
+          <div class="field">
+            <label for="sched_amount">Each</label>
+            <input type="text" id="sched_amount" name="amount" inputmode="decimal"
+                   value="{{ ob.payment_amount or '' }}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="start_on">Starting</label>
+            <input type="date" id="start_on" name="start_on" value="{{ today.isoformat() }}">
+          </div>
+          <div class="field">
+            <label for="sched_check">From check #</label>
+            <input type="text" id="sched_check" name="check_number"
+                   value="{{ ob.next_check_number or '' }}">
+          </div>
+        </div>
+        <button class="btn">Write them</button>
+      </form>
+    </details>
+
+    {% if ob.notes %}
+      <div class="card">
+        <div class="card-head"><h3>Notes</h3></div>
+        <div class="prose tiny">{{ ob.notes | markdown }}</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

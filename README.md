@@ -27,9 +27,22 @@ masked until you click it.
 - *Accounts*: savings, TSP, anything owed. Each balance you record is kept with
   its date, so you get change-over-time and a net worth figure.
 - *Recurring*: pay, child support, transfers into savings.
+- *Obligations*: a balance being paid down rather than billed forever — child
+  support, a share of the kids' medical bills. Tracks each cheque by number
+  through written → sent → cleared, and works the remaining balance out from
+  what you actually recorded rather than extrapolating. A new bill goes on as a
+  charge, so the balance can go up as well as down.
 - *Forecast*: projects cash and net worth forward, and warns you if more is
   going out than coming in.
-- Import an existing spreadsheet, export everything back to `.xlsx` at any time.
+- Import an existing spreadsheet — including the wide kind, with the companies
+  down the side and years of months across the top. Export everything back to
+  `.xlsx` at any time.
+
+**Usage** — record what a utility metered, not just what it charged. Then a
+bill going up $50 can be split into the part caused by the rate and the part
+caused by using more, which are completely different problems. Readings load
+from Green Button XML, a Smart Meter Texas CSV, or anything with a date and a
+number in it.
 
 **Recipes** — scale any recipe to a different number of servings and the
 quantities rewrite themselves as proper fractions (`1½ lb`, not `1.5`). "Salt to
@@ -166,11 +179,23 @@ reading in place. One dead sensor never takes the dashboard down.
 
 ## Bringing in your spreadsheet
 
-**Money → Import**. Upload the `.xlsx` or `.csv`. It finds the header row even
-if the sheet starts with a title, guesses which column is the company name, the
-amount, the due day, and so on, and shows you the guess before saving anything.
-Correct anything wrong, choose whether the rows are bills, accounts, or
-recurring items, and import.
+**Money → Import**. Upload the `.xlsx` or `.csv`; it works out the shape for
+itself.
+
+**A sheet with months across the top** — companies down the side, one column
+per month, a few summary columns wedged in front — is imported as history: each
+row becomes a company and each month becomes a bill on it. Summary columns
+(Total, Estimated, AVG, % of Total) are recognised and skipped, unlabelled
+totals rows are ignored, and the year is carried across the columns and rolled
+over at January when the sheet stops labelling it. Totals and averages are then
+computed rather than stored, so they cannot drift out of date the way a
+spreadsheet formula does when the data outgrows its range.
+
+**A simple list** — one row per bill — goes through column mapping instead: it
+finds the header row even if the sheet starts with a title, guesses which column
+is the company name, the amount, the due day, and so on, and shows you the guess
+before saving anything. Correct anything wrong, choose whether the rows are
+bills, accounts, or recurring items, and import.
 
 It handles the things real sheets contain: `$1,842.00`, `(650.00)` for a
 negative, `5th` for a day. Rows are matched by name, so importing an updated
@@ -179,6 +204,31 @@ copy of the same sheet updates what is there rather than duplicating it.
 Going the other way, **Money → Export** produces a workbook with bills,
 accounts, recurring items, and full payment history on separate sheets. Your
 data is never trapped in here.
+
+---
+
+## Meter readings
+
+**Money → Usage**. Three ways in:
+
+- **Green Button XML** — the national standard. Any utility with a "Download My
+  Data" button produces it.
+- **Smart Meter Texas CSV** — for electricity in deregulated Texas the meter
+  belongs to the wires company, not whoever you buy power from, so readings come
+  from [smartmetertexas.com](https://www.smartmetertexas.com) rather than your
+  retailer. Register once with your ESIID and export; it holds 13 months of
+  15-minute interval data, and the history survives switching retailer.
+- **Any CSV** with a date column and a usage column.
+
+Interval data is totalled to months, because that is the grain bills are at.
+Readings only attach to months that have a bill — usage with no cost cannot say
+anything about a rate — and part-months at either end of an export are dropped
+by default, since half a month of readings against a whole month's bill gives a
+badly wrong figure.
+
+Set what a company is metered in on its page (kWh, ccf, therms, gallons) and
+each bill can then carry a reading, giving you rate over time, usage over time,
+usage per day, and the rate-versus-volume split on any change.
 
 ---
 

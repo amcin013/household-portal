@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Meter readings · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Meter readings</h1>
+    <p>What you actually used, so the dollars have something to sit against.</p>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <form method="post" enctype="multipart/form-data" class="card">
+    {{ csrf_field() }}
+
+    <div class="field">
+      <label for="payee_id">Which company</label>
+      <select id="payee_id" name="payee_id" required>
+        <option value="">— choose —</option>
+        {% for payee in payees %}
+          <option value="{{ payee.id }}">
+            {{ payee.name }}{% if payee.usage_unit %} ({{ payee.usage_unit }}){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="file">Export file</label>
+      <input type="file" id="file" name="file" accept=".xml,.csv,.txt" required>
+      <div class="hint">
+        Green Button XML, a Smart Meter Texas CSV, or any CSV with a date
+        column and a usage column.
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="unit">Units, if the file does not say</label>
+      <select id="unit" name="unit">
+        {% for key, label in units.items() %}
+          <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div class="hint">Green Button and Smart Meter Texas carry their own units.</div>
+    </div>
+
+    <label class="check">
+      <input type="checkbox" name="overwrite" checked>
+      Replace readings already recorded
+    </label>
+    <label class="check">
+      <input type="checkbox" name="keep_partial">
+      Keep the first and last months
+    </label>
+    <div class="hint">
+      Those two are usually part-months at the edges of the export. Half a
+      month of readings against a whole month's bill gives a badly wrong rate,
+      so they are dropped unless you say otherwise.
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">Read the file</button>
+    </div>
+  </form>
+
+  <div>
+    <div class="card mb">
+      <div class="card-head"><h2>Getting the data</h2></div>
+
+      <h3 style="font-size:.95rem">Electricity</h3>
+      <p class="tiny muted">
+        In deregulated Texas the meter belongs to the wires company, not whoever
+        you buy power from — so the readings come from
+        <a href="https://www.smartmetertexas.com" target="_blank" rel="noopener">Smart Meter Texas</a>,
+        not TXU. Register once with your ESIID, then export. It holds
+        <b>13 months</b> of 15-minute interval data, and offers both a CSV and a
+        Green Button XML. Either works here.
+      </p>
+      <p class="tiny muted">
+        This is worth doing whoever you buy from: switch retailer and the
+        history stays, because the meter did not change.
+      </p>
+
+      <h3 style="font-size:.95rem">Gas and water</h3>
+      <p class="tiny muted">
+        Fewer of these offer Green Button. Look for "usage history" or
+        "download" in the account portal; if all you can get is a table on
+        screen, typing one number off each bill is enough — it is twelve numbers
+        a year.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>What it gets you</h2></div>
+      <p class="tiny muted">
+        A bill going up $50 means one of two completely different things.
+        Recording usage separates them:
+      </p>
+      <ul class="tiny" style="padding-left:1.1rem;line-height:1.8">
+        <li><b>Rate</b> — dollars per kWh over time. This is what tells you
+          whether shopping for a new plan is worth the trouble.</li>
+        <li><b>Volume</b> — how much you actually drew, independent of price.</li>
+        <li><b>Per day</b> — so a 33-day bill and a 28-day bill compare
+          honestly.</li>
+      </ul>
+      <p class="tiny muted">
+        Readings land on the bill for the month they cover, so a month with no
+        bill recorded is skipped and told to you rather than invented.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

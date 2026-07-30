@@ -51,6 +51,9 @@
       <a href="{{ url_for('money.accounts') }}" class="{{ 'active' if nav_active in ('money.accounts', 'money.new_account', 'money.edit_account') }}">
         <span class="nav-icon">🏦</span> Accounts
       </a>
+      <a href="{{ url_for('obligations.index') }}" class="{{ 'active' if nav_active.startswith('obligations.') }}">
+        <span class="nav-icon">🧾</span> Obligations
+      </a>
       <a href="{{ url_for('money.forecast') }}" class="{{ 'active' if nav_active == 'money.forecast' }}">
         <span class="nav-icon">📈</span> Forecast
       </a>

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Import history · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>This sheet has history in it</h1>
+    <p>
+      {{ items|length }} rows across {{ periods|length }} months,
+      {{ periods[0] | month_label }} to {{ periods[-1] | month_label }} —
+      {{ total_records }} monthly figures in all. Nothing is saved yet.
+    </p>
+  </div>
+  {% if sheets|length > 1 %}
+    <div class="page-actions">
+      <form method="post" enctype="multipart/form-data" class="flex">
+        {{ csrf_field() }}
+        <span class="tiny muted">Wrong tab?</span>
+        <a class="btn btn-sm" href="{{ url_for('money.import_sheet') }}">Start over</a>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+<div class="alert-banner" style="background:color-mix(in srgb, var(--good) 12%, transparent);border-color:color-mix(in srgb, var(--good) 40%, transparent)">
+  <span>✓</span>
+  <span>
+    Each row becomes a company, and each month becomes one bill on it — so the
+    per-company history and the charts work from day one. Totals and averages
+    are worked out from the figures rather than stored, so they can never go
+    stale the way a spreadsheet formula does.
+  </span>
+</div>
+
+<form method="post" action="{{ url_for('money.import_matrix_confirm') }}">
+  {{ csrf_field() }}
+
+  <div class="card mb">
+    <div class="card-head">
+      <h2>What was found</h2>
+      <span class="tiny muted">Untick anything you do not want</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th style="width:1%"></th>
+            <th>Row</th>
+            <th class="num">Months</th>
+            <th>Covering</th>
+            <th class="num">Total</th>
+            <th class="num">Average</th>
+            <th class="num">Recent 12</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+            
+            <tr>
+              <td>
+                <input type="checkbox" name="include" value="{{ item.name }}"
+                       id="inc{{ loop.index }}" checked style="width:auto">
+              </td>
+              <td>
+                <label for="inc{{ loop.index }}" style="margin:0;font-weight:600">
+                  {{ item.name }}
+                </label>
+              </td>
+              <td class="num">{{ item.months }}</td>
+              <td class="tiny muted nowrap">
+                {{ item['first'] | month_label }} → {{ item['last'] | month_label }}
+                {% if item['last'] < periods[-1] %}
+                  <span class="pill pill-warn">stopped</span>
+                {% endif %}
+              </td>
+              <td class="num">{{ item.total | money_short }}</td>
+              <td class="num">{{ item.average | money_short }}</td>
+              <td class="num tiny muted">{{ item.recent_average | money_short }}/mo</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td><b>Total</b></td>
+            <td class="num"><b>{{ total_records }}</b></td>
+            <td></td>
+            <td class="num"><b>{{ grand_total | money_short }}</b></td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-head"><h2>Where it belongs</h2></div>
+
+      <div class="field">
+        <label for="place_id">Property</label>
+        <select id="place_id" name="place_id">
+          <option value="">— not tied to a property —</option>
+          {% for place in places %}
+            <option value="{{ place.id }}">{{ place.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">
+          Applied to every row imported. You can change individual companies
+          afterwards.
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category" name="category">
+          {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if c == 'Utilities' }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" name="replace">
+        Clear existing bills first
+      </label>
+      <div class="hint">
+        Leave off and matching company names are updated in place.
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary">Import {{ total_records }} months</button>
+        <a class="btn" href="{{ url_for('money.import_sheet') }}">Cancel</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>After this</h2></div>
+      <ul class="tiny" style="padding-left:1.1rem;line-height:1.8;margin:0">
+        <li>Each company's <b>typical amount</b> is set from its last twelve
+          months, not its lifetime average — so it reflects what things cost
+          now.</li>
+        <li>Every imported month is marked <b>paid</b>, since it is history.</li>
+        <li>Rows that stopped part way through are still worth importing; the
+          history stays even if the bill has gone.</li>
+      </ul>
+      <hr>
+      <p class="tiny muted">
+        Next worth doing: load meter readings under
+        <a href="{{ url_for('money.usage_import') }}">Usage</a>, so the cost
+        history gains a usage history to sit against.
+      </p>
+    </div>
+  </div>
+</form>
+{% endblock %}

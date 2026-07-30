@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{{ ob.name if ob else 'New obligation' }} · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>{{ 'Edit ' + ob.name if ob else 'New obligation' }}</h1>
+</div>
+
+<form method="post" class="card" style="max-width:680px">
+  {{ csrf_field() }}
+
+  <div class="field">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" required autofocus
+           value="{{ ob.name if ob else '' }}" placeholder="Kids medical — Nancy">
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="owed_to">Paid to</label>
+      <input type="text" id="owed_to" name="owed_to"
+             value="{{ ob.owed_to or '' if ob else '' }}">
+    </div>
+    <div class="field">
+      <label for="kind">Kind</label>
+      <select id="kind" name="kind">
+        {% for key, label in kinds.items() %}
+          <option value="{{ key }}" {{ 'selected' if ob and ob.kind == key }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="opening_balance">Starting balance</label>
+      <input type="text" id="opening_balance" name="opening_balance" inputmode="decimal"
+             value="{{ ob.opening_balance if ob else '' }}" placeholder="1220.25">
+      <div class="hint">
+        What was owed before any payment recorded here. New bills get added
+        later as charges.
+      </div>
+    </div>
+    <div class="field">
+      <label for="payment_amount">Usual payment</label>
+      <input type="text" id="payment_amount" name="payment_amount" inputmode="decimal"
+             value="{{ ob.payment_amount if ob else '' }}" placeholder="67.79">
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="frequency">How often</label>
+      <select id="frequency" name="frequency">
+        <option value="monthly" {{ 'selected' if ob and ob.frequency == 'monthly' }}>Monthly</option>
+        <option value="biweekly" {{ 'selected' if ob and ob.frequency == 'biweekly' }}>Every 2 weeks</option>
+        <option value="other" {{ 'selected' if ob and ob.frequency == 'other' }}>Irregular</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="pays_by">Paid by</label>
+      <select id="pays_by" name="pays_by">
+        <option value="check" {{ 'selected' if ob and ob.pays_by == 'check' }}>Check</option>
+        <option value="transfer" {{ 'selected' if ob and ob.pays_by == 'transfer' }}>Transfer</option>
+        <option value="withheld" {{ 'selected' if ob and ob.pays_by == 'withheld' }}>Withheld from pay</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="next_check_number">Next check #</label>
+      <input type="text" id="next_check_number" name="next_check_number"
+             value="{{ ob.next_check_number or '' if ob else '' }}" placeholder="995109">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="account_hint">Paid from</label>
+    <input type="text" id="account_hint" name="account_hint"
+           value="{{ ob.account_hint or '' if ob else '' }}" placeholder="ends 4417">
+  </div>
+
+  <div class="field">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" style="min-height:5rem">{{ ob.notes or '' if ob else '' }}</textarea>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" name="active" {{ 'checked' if not ob or ob.active }}>
+    Active
+  </label>
+
+  <div class="form-actions">
+    <button class="btn btn-primary">{{ 'Save' if ob else 'Add obligation' }}</button>
+    <a class="btn" href="{{ url_for('obligations.index') }}">Cancel</a>
+  </div>
+</form>
+
+{% if ob %}
+  <form method="post" action="{{ url_for('obligations.delete', slug=ob.slug) }}" class="mt"
+        data-confirm="Delete {{ ob.name }} and every payment recorded against it?">
+    {{ csrf_field() }}
+    <button class="btn btn-danger btn-sm">Delete this obligation</button>
+  </form>
+{% endif %}
+{% endblock %}

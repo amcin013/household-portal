@@ -377,6 +377,11 @@ class Payee(db.Model):
     active = db.Column(db.Boolean, default=True)
     notes = db.Column(db.Text)
     sort_order = db.Column(db.Integer, default=0)
+    # What this utility is metered in, if it is metered at all. Recording the
+    # units alongside the dollars is the only way to tell a rate rise apart
+    # from actually using more.
+    usage_unit = db.Column(db.String(16))  # kWh | ccf | therm | gal | kgal
+    meter_number = db.Column(db.String(60))
 
     place = db.relationship("Place")
     payments = db.relationship(
@@ -405,11 +410,38 @@ class BillPayment(db.Model):
     note = db.Column(db.String(300))
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
+    # How much was actually consumed, and over how many days. The day count
+    # matters more than people expect: a 33-day bill against a 28-day one is
+    # 18% more before anything real has happened.
+    usage = db.Column(db.Float)
+    usage_unit = db.Column(db.String(16))
+    service_days = db.Column(db.Integer)
+    usage_source = db.Column(db.String(20))  # manual | smt | greenbutton | csv
+
     payee = db.relationship("Payee", back_populates="payments")
 
     @property
     def is_paid(self):
         return self.status == "paid"
+
+    @property
+    def unit_cost(self):
+        """Dollars per kWh / ccf / gallon - the actual rate paid."""
+        if not self.usage or self.amount is None:
+            return None
+        return self.amount / self.usage
+
+    @property
+    def usage_per_day(self):
+        if not self.usage or not self.service_days:
+            return None
+        return self.usage / self.service_days
+
+    @property
+    def cost_per_day(self):
+        if self.amount is None or not self.service_days:
+            return None
+        return self.amount / self.service_days
 
 
 class Account(db.Model):
@@ -511,6 +543,146 @@ class LedgerItem(db.Model):
         if self.frequency == "annual":
             return (self.amount or 0) / 12
         return self.amount or 0
+
+
+# --------------------------------------------------------------------------
+# Obligations: a balance being paid down to zero
+# --------------------------------------------------------------------------
+class Obligation(db.Model):
+    """Something owed that gets paid off, rather than billed forever.
+
+    Child support, a share of the kids' medical bills, a judgement. Unlike a
+    Payee (a company billed every month) or an Account (a balance you snapshot),
+    the point of an obligation is the remaining balance and when it reaches
+    zero - worked out from the payments actually recorded, not extrapolated.
+
+    The balance can go up as well as down: a new medical bill arrives and gets
+    added as a charge.
+    """
+
+    __tablename__ = "obligations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(160), nullable=False)          # "Kids medical - Nancy"
+    owed_to = db.Column(db.String(160))
+    kind = db.Column(db.String(40), default="other")          # medical|support|loan|other
+    opening_balance = db.Column(db.Float, default=0)
+    payment_amount = db.Column(db.Float, default=0)           # the usual cheque
+    frequency = db.Column(db.String(20), default="monthly")   # monthly|biweekly|other
+    pays_by = db.Column(db.String(20), default="check")       # check|transfer|withheld
+    next_check_number = db.Column(db.String(20))
+    account_hint = db.Column(db.String(120))
+    active = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+    entries = db.relationship(
+        "ObligationEntry",
+        back_populates="obligation",
+        cascade="all, delete-orphan",
+        order_by="ObligationEntry.happened_on, ObligationEntry.id",
+    )
+
+    # --- money in and out -------------------------------------------------
+    @property
+    def charges(self):
+        return [e for e in self.entries if e.is_charge]
+
+    @property
+    def payments(self):
+        return [e for e in self.entries if not e.is_charge]
+
+    @property
+    def total_charged(self):
+        return sum(e.amount or 0 for e in self.charges)
+
+    @property
+    def total_paid(self):
+        """Only money that has actually gone out. A cheque still sitting on the
+        desk has not paid anything down yet."""
+        return sum(e.amount or 0 for e in self.payments if e.status in ("sent", "cleared"))
+
+    @property
+    def total_scheduled(self):
+        return sum(e.amount or 0 for e in self.payments if e.status == "scheduled")
+
+    @property
+    def balance(self):
+        return (self.opening_balance or 0) + self.total_charged - self.total_paid
+
+    @property
+    def projected_balance(self):
+        """Where it lands once everything already written has gone through."""
+        return self.balance - self.total_scheduled
+
+    @property
+    def is_settled(self):
+        return abs(self.balance) < 0.01
+
+    @property
+    def progress(self):
+        """0 to 1, for a bar. Against everything ever owed."""
+        owed = (self.opening_balance or 0) + self.total_charged
+        return min(self.total_paid / owed, 1.0) if owed else 0.0
+
+    # --- what is left -----------------------------------------------------
+    @property
+    def payments_remaining(self):
+        if not self.payment_amount:
+            return None
+        import math
+        return max(0, math.ceil(self.balance / self.payment_amount))
+
+    @property
+    def uncleared(self):
+        return [e for e in self.payments if e.status == "sent"]
+
+    def payoff_date(self):
+        """When the balance reaches zero at the current rate."""
+        remaining = self.payments_remaining
+        if not remaining:
+            return None
+        step = {"biweekly": 14, "monthly": 30}.get(self.frequency)
+        if step is None:
+            return None
+        last = max((e.happened_on for e in self.payments if e.happened_on),
+                   default=date.today())
+        from datetime import timedelta
+        return last + timedelta(days=step * remaining)
+
+
+class ObligationEntry(db.Model):
+    """One movement against an obligation - a payment out, or a new charge on.
+
+    Payments carry a status because a cheque has a life: written, sent, then
+    cleared the bank. Only sent and cleared count against the balance.
+    """
+
+    __tablename__ = "obligation_entries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    obligation_id = db.Column(
+        db.Integer, db.ForeignKey("obligations.id", ondelete="CASCADE"), nullable=False
+    )
+    happened_on = db.Column(db.Date, default=date.today, index=True)
+    amount = db.Column(db.Float, default=0)
+    # A charge adds to what is owed; anything else pays it down.
+    is_charge = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default="sent")  # scheduled|sent|cleared|void
+    check_number = db.Column(db.String(20))
+    cleared_on = db.Column(db.Date)
+    note = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+    obligation = db.relationship("Obligation", back_populates="entries")
+
+    @property
+    def label(self):
+        if self.is_charge:
+            return "Charge"
+        return f"Check {self.check_number}" if self.check_number else "Payment"
 
 
 # --------------------------------------------------------------------------

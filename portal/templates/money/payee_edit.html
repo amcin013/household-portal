@@ -79,6 +79,27 @@
       </div>
     </div>
 
+    <div class="field-row">
+      <div class="field">
+        <label for="usage_unit">Metered in</label>
+        <input type="text" id="usage_unit" name="usage_unit" list="unitList"
+               value="{{ payee.usage_unit or '' if payee else '' }}"
+               placeholder="kWh, ccf, gal…">
+        <datalist id="unitList">
+          {% for key in ['kWh','ccf','therm','gal','kgal'] %}<option value="{{ key }}">{% endfor %}
+        </datalist>
+        <div class="hint">
+          Set this and each bill can carry a reading, which is what separates a
+          rate rise from using more.
+        </div>
+      </div>
+      <div class="field">
+        <label for="meter_number">Meter or ESIID</label>
+        <input type="text" id="meter_number" name="meter_number"
+               value="{{ payee.meter_number or '' if payee else '' }}">
+      </div>
+    </div>
+
     <div class="field">
       <label for="notes">Notes</label>
       <textarea id="notes" name="notes" style="min-height:5rem">{{ payee.notes or '' if payee else '' }}</textarea>
@@ -105,6 +126,90 @@
   </form>
 
   <div>
+    {% if payee and has_usage %}
+      <div class="card mb">
+        <div class="card-head">
+          <h2>Usage and rate</h2>
+          <a class="card-link" href="{{ url_for('money.usage_import') }}">Load readings →</a>
+        </div>
+
+        {% if comparison %}
+          {% set c = comparison %}
+          <p class="tiny muted">
+            {{ c.period | month_label }} against {{ c.other | month_label }}:
+          </p>
+          <div class="stats mb" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">
+            <div class="stat {{ 'bad' if c.amount_change > 0 else 'good' }}">
+              <div class="stat-label">Bill</div>
+              <div class="stat-value" style="font-size:1.2rem">
+                {{ '+' if c.amount_change > 0 }}{{ c.amount_change | money_short }}
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Because of rate</div>
+              <div class="stat-value" style="font-size:1.2rem">
+                {{ '+' if c.rate_effect > 0 }}{{ c.rate_effect | money_short }}
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Because of usage</div>
+              <div class="stat-value" style="font-size:1.2rem">
+                {{ '+' if c.volume_effect > 0 }}{{ c.volume_effect | money_short }}
+              </div>
+              <div class="stat-note">
+                {{ '+' if c.usage_change > 0 }}{{ c.usage_change | round(1) }} {{ c.unit }}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        {% set used = readings | selectattr('usage') | list %}
+        {% if used %}
+          {% set peak = used | map(attribute='usage') | max %}
+          <p class="tiny muted" style="margin-bottom:.3rem">Usage ({{ used[-1].unit }})</p>
+          <div class="mini-bars mb">
+            {% for r in used %}
+              <div class="mb" style="height:{{ ((r.usage / peak) * 100) | round(1) }}%"
+                   title="{{ r.period | month_label }}: {{ r.usage | round(1) }} {{ r.unit }}"></div>
+            {% endfor %}
+          </div>
+
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th class="num">Cost</th>
+                  <th class="num">Used</th>
+                  <th class="num">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in used | reverse %}
+                  <tr>
+                    <td>{{ r.period | month_label }}</td>
+                    <td class="num">{{ r.amount | money }}</td>
+                    <td class="num">{{ r.usage | round(1) }} {{ r.unit }}</td>
+                    <td class="num">
+                      {% if r.unit_cost %}${{ '%.4f' % r.unit_cost }}{% else %}—{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </div>
+    {% elif payee and payee.usage_unit %}
+      <div class="card mb">
+        <div class="card-head"><h2>Usage</h2></div>
+        <p class="tiny muted">
+          Metered in {{ payee.usage_unit }}, but no readings recorded yet.
+          <a href="{{ url_for('money.usage_import') }}">Load them from a file →</a>
+        </p>
+      </div>
+    {% endif %}
+
     {% if payee and history %}
       <div class="card">
         <div class="card-head"><h2>What it has cost</h2></div>
