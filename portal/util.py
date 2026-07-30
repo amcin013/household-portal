@@ -57,9 +57,11 @@ def strip_markdown(text, limit=180):
 
 # --- numbers --------------------------------------------------------------
 NICE_FRACTIONS = {
-    Fraction(1, 8): "⅛", Fraction(1, 4): "¼", Fraction(1, 3): "⅓",
-    Fraction(3, 8): "⅜", Fraction(1, 2): "½", Fraction(5, 8): "⅝",
-    Fraction(2, 3): "⅔", Fraction(3, 4): "¾", Fraction(7, 8): "⅞",
+    Fraction(1, 8): "⅛", Fraction(1, 6): "⅙", Fraction(1, 5): "⅕",
+    Fraction(1, 4): "¼", Fraction(1, 3): "⅓", Fraction(3, 8): "⅜",
+    Fraction(2, 5): "⅖", Fraction(1, 2): "½", Fraction(3, 5): "⅗",
+    Fraction(5, 8): "⅝", Fraction(2, 3): "⅔", Fraction(3, 4): "¾",
+    Fraction(4, 5): "⅘", Fraction(5, 6): "⅚", Fraction(7, 8): "⅞",
 }
 
 
@@ -69,14 +71,20 @@ def pretty_quantity(value):
         return ""
     if abs(value) < 1e-9:
         return "0"
+
     frac = Fraction(value).limit_denominator(8)
+    # limit_denominator always returns *something*, and for a small quantity
+    # that something can be wildly off - 0.07 becomes 1/8, nearly double. Only
+    # use the fraction when it genuinely represents the number.
+    if abs(float(frac) - value) > 0.02 * abs(value):
+        return f"{round(value, 2):g}"
+
     whole, rest = divmod(frac, 1)
     if rest == 0:
         return str(int(whole))
     symbol = NICE_FRACTIONS.get(rest)
     if symbol is None:
-        rounded = round(value, 2)
-        return f"{rounded:g}"
+        return f"{round(value, 2):g}"
     return f"{int(whole)}{symbol}" if whole else symbol
 
 

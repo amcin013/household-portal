@@ -4,6 +4,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Components below set an explicit display, which would otherwise beat the
+   browser's [hidden] rule and leave "hidden" elements on screen. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -337,6 +341,14 @@ table.data tbody tr:hover { background: var(--surface-2); }
 
 .scaler { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .scaler .steps { display: flex; gap: .25rem; }
+/* Deliberately not .pill: a flex pill would put its gap between the number
+   and the "x" that follows it. */
+.scale-note {
+  display: inline-block; padding: .12rem .55rem; border-radius: 20px;
+  font-size: .74rem; font-weight: 600; margin: 0 0 .5rem;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
 /* Needs the element qualifier to outrank the input[type=number] base rule. */
 input.serving-input { width: 4.5rem; text-align: center; font-weight: 650; }
 

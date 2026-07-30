@@ -42,10 +42,12 @@
     <div class="card mb">
       <div class="card-head"><h2>Ingredients</h2></div>
 
-      <div class="scaler" id="scaler">
+      <div class="scaler" id="scaler" data-base-servings="{{ recipe.servings }}">
         <span class="tiny muted">Make</span>
+        <button class="btn btn-sm" data-step="-1" aria-label="One fewer">−</button>
         <input class="serving-input" type="number" min="1" max="200" value="{{ servings }}"
                aria-label="Number of {{ recipe.serving_noun }}">
+        <button class="btn btn-sm" data-step="1" aria-label="One more">+</button>
         <span class="tiny muted">{{ recipe.serving_noun }}</span>
         <span class="steps">
           <button class="btn btn-sm" data-servings="{{ (recipe.servings / 2) | round(0, 'ceil') | int }}">½×</button>
@@ -55,20 +57,19 @@
         </span>
       </div>
 
-      {% if factor != 1 %}
-        <p class="tiny pill pill-accent">
-          Scaled {{ '%g' % factor }}× from {{ recipe.servings }} {{ recipe.serving_noun }}
-        </p>
-      {% endif %}
+      <p class="scale-note" id="scaleNote" {% if factor == 1 %}hidden{% endif %}>
+        Scaled <span id="scaleFactor">{{ factor | qty }}</span>× from
+        {{ recipe.servings }} {{ recipe.serving_noun }}
+      </p>
 
-      <ul class="ingredients mt">
+      <ul class="ingredients mt" id="ingredientList">
         {% for row in rows %}
           {% if row.heading %}
             <li class="ing-heading">{{ row.item }}</li>
           {% else %}
             <li>
               {% if row.quantity is not none %}
-                <span class="ing-qty">{{ row.quantity | qty }}{% if row.unit %} {{ row.unit }}{% endif %}</span>
+                <span class="ing-qty"><span class="q" data-base="{{ row.base_quantity }}">{{ row.quantity | qty }}</span>{% if row.unit %} {{ row.unit }}{% endif %}</span>
               {% endif %}
               <span>
                 {{ row.item }}

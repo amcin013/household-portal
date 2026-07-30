@@ -64,24 +64,94 @@
   });
 
   // --- recipe scaler ------------------------------------------------------
+  // Rewrites the quantities in place. No reload, so you can nudge the number
+  // while standing at the counter and watch the list follow. The ?servings=
+  // URL still works on its own for anyone without JavaScript.
+  var VULGAR = [
+    [1, 8, "⅛"], [1, 6, "⅙"], [1, 5, "⅕"], [1, 4, "¼"], [1, 3, "⅓"],
+    [3, 8, "⅜"], [2, 5, "⅖"], [1, 2, "½"], [3, 5, "⅗"], [5, 8, "⅝"],
+    [2, 3, "⅔"], [3, 4, "¾"], [4, 5, "⅘"], [5, 6, "⅚"], [7, 8, "⅞"]
+  ];
+
+  // Mirrors pretty_quantity() in portal/util.py - the two must agree, or a
+  // quantity would change the moment the page reloaded.
+  function prettyQuantity(value) {
+    if (value === null || isNaN(value)) return "";
+    if (Math.abs(value) < 1e-9) return "0";
+
+    var best = [Math.round(value), 1], bestErr = Infinity;
+    for (var d = 1; d <= 8; d++) {
+      var n = Math.round(value * d);
+      var err = Math.abs(value - n / d);
+      if (err < bestErr - 1e-12) { bestErr = err; best = [n, d]; }
+    }
+    var num = best[0], den = best[1];
+    // The closest eighth of a small number can be nearly double it - 0.07
+    // would round to 1/8. Only use a fraction when it really is the number.
+    if (Math.abs(num / den - value) > 0.02 * Math.abs(value)) {
+      return String(Number(value.toFixed(2)));
+    }
+
+    var whole = Math.floor(num / den), rem = num - whole * den;
+    if (rem === 0) return String(whole);
+
+    for (var i = 0; i < VULGAR.length; i++) {
+      if (VULGAR[i][0] * den === rem * VULGAR[i][1]) {
+        return whole ? whole + VULGAR[i][2] : VULGAR[i][2];
+      }
+    }
+    // toFixed rounds the same way Python's round() does on these values;
+    // Math.round(v * 100) does not, and would drift by a cent on halves.
+    return String(Number(value.toFixed(2)));
+  }
+
   var scaler = document.getElementById("scaler");
   if (scaler) {
     var input = scaler.querySelector(".serving-input");
-    var apply = function (value) {
+    var base = parseInt(scaler.getAttribute("data-base-servings"), 10) || 1;
+    var note = document.getElementById("scaleNote");
+    var factorEl = document.getElementById("scaleFactor");
+    var quantities = document.querySelectorAll("#ingredientList .q");
+
+    var apply = function (value, pushUrl) {
       var n = Math.max(1, Math.min(parseInt(value, 10) || 1, 200));
-      var url = new URL(window.location.href);
-      url.searchParams.set("servings", n);
-      window.location.href = url.toString();
+      input.value = n;
+
+      var factor = n / base;
+      quantities.forEach(function (el) {
+        var q = parseFloat(el.getAttribute("data-base"));
+        if (!isNaN(q)) el.textContent = prettyQuantity(q * factor);
+      });
+
+      if (note) {
+        note.hidden = factor === 1;
+        if (factorEl) factorEl.textContent = prettyQuantity(factor);
+      }
+
+      // Keep the address bar honest so a refresh or a shared link agrees.
+      if (pushUrl !== false && window.history.replaceState) {
+        var url = new URL(window.location.href);
+        url.searchParams.set("servings", n);
+        window.history.replaceState({}, "", url.toString());
+      }
     };
+
     scaler.querySelectorAll("[data-servings]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
         apply(btn.getAttribute("data-servings"));
       });
     });
+    scaler.querySelectorAll("[data-step]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        apply(parseInt(input.value, 10) + parseInt(btn.getAttribute("data-step"), 10));
+      });
+    });
     if (input) {
-      input.addEventListener("change", function () { apply(input.value); });
+      input.addEventListener("input", function () { apply(input.value); });
       input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") { e.preventDefault(); apply(input.value); }
+        if (e.key === "Enter") { e.preventDefault(); input.blur(); }
       });
     }
   }
