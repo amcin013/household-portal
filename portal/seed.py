@@ -5,6 +5,7 @@ Safe to run twice - it skips anything already there.
 """
 from .extensions import db
 from .models import Food, Link, Page, Payee, Place, PlaceFact, unique_slug
+from .seed_foods import FOODS
 
 PLACES = [
     {
@@ -147,19 +148,6 @@ put in the page you actually land on to pay, and it becomes a Pay button
 everywhere.
 """,
     },
-]
-
-FOODS = [
-    ("Chicken breast, raw", 165, 31, 0, 3.6, 0, 74, {"each": 174}),
-    ("All-purpose flour", 364, 10.3, 76.3, 1, 2.7, 2, {"cup": 120, "tbsp": 8}),
-    ("Granulated sugar", 387, 0, 100, 0, 0, 1, {"cup": 200, "tbsp": 12.5}),
-    ("Butter", 717, 0.9, 0.1, 81, 0, 11, {"cup": 227, "tbsp": 14}),
-    ("Whole milk", 61, 3.2, 4.8, 3.3, 0, 43, {"cup": 244, "tbsp": 15}),
-    ("Large egg", 143, 12.6, 0.7, 9.5, 0, 142, {"each": 50}),
-    ("Olive oil", 884, 0, 0, 100, 0, 2, {"cup": 216, "tbsp": 13.5}),
-    ("Yellow onion", 40, 1.1, 9.3, 0.1, 1.7, 4, {"each": 110, "cup": 160}),
-    ("Long-grain white rice, raw", 365, 7.1, 80, 0.7, 1.3, 5, {"cup": 185}),
-    ("Ground beef, 80/20", 254, 17.2, 0, 20, 0, 66, {}),
 ]
 
 
