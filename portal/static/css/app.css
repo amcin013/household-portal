@@ -308,7 +308,10 @@ table.data tbody tr:hover { background: var(--surface-2); }
 }
 .link-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
 .link-tile .li-icon { font-size: 1.35rem; width: 1.8rem; text-align: center; flex: 0 0 auto; }
-.link-tile .li-title { font-weight: 600; font-size: .92rem; }
+.link-tile .li-title {
+  font-weight: 600; font-size: .92rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .link-tile .li-sub { font-size: .76rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- recipes ---------- */

@@ -103,7 +103,7 @@
         <a class="card-link" href="{{ url_for('links.index') }}">All links →</a>
       </div>
       {% if pinned_links %}
-        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem">
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:.5rem">
           {% for link in pinned_links %}
             <a class="link-tile" href="{{ link.url or url_for('links.edit', link_id=link.id) }}"
                {% if link.url and link.open_new_tab %}target="_blank" rel="noopener"{% endif %}>
