@@ -1,0 +1,25 @@
+# Collects disk capacity and SMART health for the portal to display.
+#
+#   sudo cp deploy/disk-health.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now disk-health.timer
+#
+# Run it once by hand:  sudo systemctl start disk-health.service
+# See what it found:    cat /var/lib/household-portal/disk-health.json
+
+[Unit]
+Description=Collect disk health for the household portal
+Documentation=file:/opt/household-portal/deploy/disk-health.py
+
+[Service]
+Type=oneshot
+# Root is required: smartctl talks to the raw device. This is why the
+# collector is a separate unit rather than something the portal does itself --
+# the portal stays unprivileged and only reads the JSON.
+ExecStart=/usr/bin/python3 /opt/household-portal/deploy/disk-health.py
+
+# It writes exactly one file and needs nothing else.
+ReadWritePaths=/var/lib/household-portal
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true

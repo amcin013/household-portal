@@ -50,8 +50,10 @@ PLACES = [
 ]
 
 LINKS = [
-    ("Jellyfin", "", "Media", "🎬", "Movies and TV", True),
-    ("Router admin", "", "Home network", "📡", "", False),
+    ("Jellyfin", "http://192.168.50.178:8096", "Media", "🎬", "Movies and TV", True),
+    ("Home Assistant", "http://192.168.50.237:8123", "Home network", "🏡",
+     "Sensors, thermostats and automations", False),
+    ("Router admin", "http://192.168.50.1", "Home network", "📡", "", False),
     ("TXU Energy", "https://www.txu.com", "Bills", "⚡", "Electricity", False),
     ("Pflugerville Utilities", "https://www.pflugervilletx.gov/utilities",
      "Bills", "💧", "Water and wastewater", False),
@@ -64,6 +66,61 @@ PAYEES = [
 ]
 
 PAGES = [
+    {
+        "title": "Watching things on Jellyfin",
+        "category": "How-to",
+        "icon": "🎬",
+        "is_essential": False,
+        "pinned": False,
+        "sort_order": 20,
+        "summary": "How to watch the films and TV on the house server, and what to do when something will not play.",
+        "body": """\
+Everything is on the server in the house. Nothing here needs an account with
+anybody, and none of it costs anything per month.
+
+## Watching
+
+Open **<http://192.168.50.178:8096>** in any browser on the house wifi. That is
+the whole thing — no app needed on a laptop or desktop.
+
+On a TV, phone or tablet, install the **Jellyfin** app and point it at that same
+address when it asks for a server. The app store version is free; ignore
+anything asking for a subscription, it is not ours.
+
+Away from the house, it only works over the VPN. The address does not work from
+a coffee shop or on mobile data.
+
+## When something will not play
+
+Work down this list — it is roughly most to least likely.
+
+1. **Check another device.** If it plays on a phone but not the TV, the problem
+   is that TV app, not the server or the file.
+2. **Is anything else streaming?** The server can only convert so many things at
+   once. Pausing another stream often fixes it immediately.
+3. **Restart the app**, then the TV. Genuinely fixes a surprising amount.
+4. **Check the server is up** — open the address above in a browser. If that
+   does not load either, the problem is the server or the network, not Jellyfin.
+
+If it plays but stutters or buffers, that is usually the file being converted on
+the fly rather than played directly. It is a performance issue, not a broken
+file — it will still play, just badly on a weak device.
+
+## What is where
+
+Media lives across several drives, plus a network share. **Storage** in the menu
+shows how full each one is and whether any drive is in trouble.
+
+Free space is worth glancing at now and then. A drive that fills up stops new
+recordings and downloads landing, usually with no obvious error.
+
+## Fill these in
+
+- [ ] Who has accounts, and who is allowed to add people
+- [ ] Which TVs and devices are already set up
+- [ ] What to do if the server needs restarting and nobody technical is home
+""",
+    },
     {
         "title": "If you are covering for me",
         "category": "Emergency",

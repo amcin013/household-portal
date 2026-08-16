@@ -40,6 +40,9 @@
       <a href="{{ url_for('links.index') }}" class="{{ 'active' if nav_active.startswith('links.') }}">
         <span class="nav-icon">🔗</span> Links
       </a>
+      <a href="{{ url_for('system.disks') }}" class="{{ 'active' if nav_active.startswith('system.') }}">
+        <span class="nav-icon">💾</span> Storage
+      </a>
 
       <div class="nav-label">Money</div>
       <a href="{{ url_for('money.index') }}" class="{{ 'active' if nav_active == 'money.index' }}">

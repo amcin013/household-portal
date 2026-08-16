@@ -1,0 +1,14 @@
+# Hourly is plenty. SMART attributes move slowly, and a drive that is failing
+# will still be failing in an hour.
+
+[Unit]
+Description=Hourly disk health collection for the household portal
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1h
+# Catch up after the machine has been off rather than waiting a full hour.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

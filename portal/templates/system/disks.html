@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Storage · {{ site_name }}{% endblock %}
+
+{% set pill = {'ok': 'pill-good', 'warn': 'pill-warn', 'critical': 'pill-bad', 'unknown': ''} %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Storage</h1>
+    <p>
+      {% if report.generated_at %}
+        Checked {{ report.generated_at | timeago }}
+        {%- if report.hostname %} on {{ report.hostname }}{% endif %}
+      {% else %}
+        No report yet
+      {% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <span class="pill {{ pill[report.status] }}">
+      {% if report.status == 'ok' %}All good
+      {% elif report.status == 'warn' %}Needs a look
+      {% elif report.status == 'critical' %}Act now
+      {% else %}Unknown{% endif %}
+    </span>
+  </div>
+</div>
+
+{% if report.warnings %}
+  <div class="alert-banner mb">
+    <ul class="list">
+      {% for warning in report.warnings %}
+        <li class="list-row">{{ warning }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% if not report.available %}
+  <div class="card">
+    <div class="card-head"><h2>Nothing collected yet</h2></div>
+    <p class="muted">
+      Drive health is gathered by a small root-owned job, because reading SMART
+      needs privileges the portal deliberately does not have. Turn it on with:
+    </p>
+    <pre>sudo cp deploy/disk-health.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now disk-health.timer</pre>
+  </div>
+{% else %}
+
+  <div class="card mb">
+    <div class="card-head"><h2>Space</h2></div>
+    <ul class="list">
+      {% for fs in report.filesystems %}
+        <li class="list-row">
+          <div class="flex-between">
+            <div style="min-width:0">
+              <strong>{{ fs.mount }}</strong>
+              <span class="muted">
+                · {{ fs.fstype }}{% if fs.network %} · network share{% endif %}
+              </span>
+            </div>
+            <div class="nowrap">
+              <span class="num">{{ fs.avail_h }}</span>
+              <span class="muted">free of {{ fs.size_h }}</span>
+              <span class="pill {{ pill[fs.status] }}">{{ fs.use_percent }}%</span>
+            </div>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:{{ fs.use_percent }}%"></div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Drive health</h2></div>
+    {% if report.disks %}
+      <ul class="list">
+        {% for disk in report.disks %}
+          <li class="list-row flex-between">
+            <div style="min-width:0">
+              <strong>/dev/{{ disk.device }}</strong>
+              <span class="muted">{{ disk.model or 'unknown model' }} · {{ disk.size }}</span>
+            </div>
+            <div class="nowrap">
+              {% if disk.reallocated_sectors %}
+                <span class="muted">{{ disk.reallocated_sectors }} reallocated</span>
+              {% endif %}
+              {% if disk.pending_sectors %}
+                <span class="muted">{{ disk.pending_sectors }} pending</span>
+              {% endif %}
+              {% if disk.temperature_c %}
+                <span class="muted">{{ disk.temperature_c }}°C</span>
+              {% endif %}
+              <span class="pill {{ pill[disk.status] }}">
+                {% if disk.smart_ok %}SMART OK
+                {% elif disk.smart_ok is none %}No SMART
+                {% else %}FAILING{% endif %}
+              </span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No drives reported.</p>
+    {% endif %}
+  </div>
+
+{% endif %}
+{% endblock %}
