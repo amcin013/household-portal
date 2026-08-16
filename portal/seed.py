@@ -237,7 +237,18 @@ def run_seed():
         created.append(f"place: {place.name}")
 
     for order, (title, url, category, icon, description, pinned) in enumerate(LINKS):
-        if Link.query.filter_by(title=title).first():
+        existing = Link.query.filter_by(title=title).first()
+        if existing:
+            # Seeded links used to ship with a blank URL, to be filled in per
+            # household. Re-running the seed backfills those, so an address
+            # added here reaches a database that already exists.
+            #
+            # A URL somebody has already set is never touched: seeding has to
+            # stay safe to re-run, and silently reverting an edit would be
+            # worse than doing nothing at all.
+            if url and not (existing.url or "").strip():
+                existing.url = url
+                created.append(f"link url: {title}")
             continue
         db.session.add(
             Link(title=title, url=url, category=category, icon=icon,
