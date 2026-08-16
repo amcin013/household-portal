@@ -70,14 +70,22 @@ def filesystems():
             })
 
     walk(json.loads(raw).get("filesystems", []))
-    # findmnt reports the same device twice when bind-mounted; keep first seen.
-    seen, unique = set(), []
+
+    # One filesystem can appear under several mount points. This unit runs with
+    # PrivateTmp and StateDirectory, so systemd bind-mounts /var/tmp and the
+    # state directory into its namespace and findmnt sees them as separate
+    # entries -- reporting "/" three times at the same percentage.
+    #
+    # Deduplicate by the backing source and keep the shallowest mount point,
+    # which is the real one rather than a bind of it.
+    by_source = {}
     for fs in found:
-        if fs["mount"] in seen:
-            continue
-        seen.add(fs["mount"])
-        unique.append(fs)
-    return sorted(unique, key=lambda f: -f["use_percent"])
+        key = fs["source"] or fs["mount"]
+        current = by_source.get(key)
+        if current is None or len(fs["mount"]) < len(current["mount"]):
+            by_source[key] = fs
+
+    return sorted(by_source.values(), key=lambda f: -f["use_percent"])
 
 
 def block_devices():
