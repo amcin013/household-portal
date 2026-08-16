@@ -19,7 +19,13 @@ Type=oneshot
 ExecStart=/usr/bin/python3 /opt/household-portal/deploy/disk-health.py
 
 # It writes exactly one file and needs nothing else.
-ReadWritePaths=/var/lib/household-portal
+#
+# StateDirectory rather than ReadWritePaths: systemd builds the mount namespace
+# before the script runs, so naming a directory that does not exist yet fails
+# the unit with 226/NAMESPACE before it can create it. StateDirectory creates
+# /var/lib/household-portal first, then makes it writable.
+StateDirectory=household-portal
+StateDirectoryMode=0755
 ProtectHome=true
 NoNewPrivileges=true
 PrivateTmp=true
