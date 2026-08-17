@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_radar_inline.html' import radar_inline %}
 {% block title %}{{ place.name }} · {{ site_name }}{% endblock %}
 
 {% block content %}
@@ -94,6 +95,11 @@
         {% if weather.get('fetched_at') %} · updated {{ weather.fetched_at | timeago }}{% endif %}
       </p>
     {% endif %}
+
+    {# Outside the weather if/elif above on purpose: the radar station is
+       cached separately from the forecast, so the loop still draws on a day
+       when the forecast fetch itself failed. #}
+    {{ radar_inline(place, open=True) }}
 
     {# ---------- sensors ---------- #}
     <div class="mt" style="padding-top:1rem;border-top:1px solid var(--border)">

@@ -1,3 +1,4 @@
+{% from '_radar_inline.html' import radar_inline %}
 {% set d = panel.data %}
 {% for place in d.places %}
   <section class="card weather-card" data-place="{{ place.id }}">
@@ -15,6 +16,7 @@
           <div class="weather-meta skeleton">Loading conditions</div>
         </div>
       </div>
+      {{ radar_inline(place) }}
     </div>
   </section>
 {% endfor %}

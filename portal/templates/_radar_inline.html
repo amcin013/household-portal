@@ -1,0 +1,41 @@
+{#
+  The radar loop as it appears *inside* a weather card - on the home page under
+  each property, and on the place page under that place's conditions.
+
+  Shared macro rather than two copies: the NOAA URL shape, the collapsed-by-
+  default behaviour and the "no station yet" wording all have to agree in both
+  places, and they drifted the last time they were written out twice.
+
+  Distinct from dashboard/_radar.html, which is the standalone full-width panel
+  showing every radar-enabled property side by side. That one is for a wall
+  tablet; this one is for reading a single property.
+#}
+{% macro radar_inline(place, open=False) %}
+  {% set station = place.radar_station %}
+  {% if place.show_radar %}
+    <details class="radar-inline" {{ 'open' if open }}>
+      <summary>
+        <span class="radar-sum-label">🌧️ Radar</span>
+        {% if station %}<span class="radar-station">{{ station }}</span>{% endif %}
+      </summary>
+
+      {% if station %}
+        {# loading=lazy matters here: collapsed by default, so the animated GIF
+           is not fetched at all until somebody actually opens it. #}
+        <a href="https://radar.weather.gov/station/{{ station|lower }}/standard"
+           target="_blank" rel="noopener"
+           title="Open the full NOAA radar for {{ station }}">
+          <img loading="lazy" data-radar
+               alt="NOAA radar loop near {{ place.name }}"
+               src="https://radar.weather.gov/ridge/standard/{{ station }}_loop.gif">
+        </a>
+        <p class="tiny muted radar-foot">NOAA {{ station }} · loop updates every 5 minutes</p>
+      {% else %}
+        <p class="radar-missing tiny muted">
+          No radar station known yet. NOAA sends it along with the forecast, so
+          it appears after the next refresh.
+        </p>
+      {% endif %}
+    </details>
+  {% endif %}
+{% endmacro %}
