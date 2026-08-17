@@ -1,7 +1,7 @@
 """The landing page, assembled from whichever modules are switched on."""
 from datetime import date, timedelta
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, url_for
 from flask_login import current_user, login_required
 
 from ..models import (
@@ -129,7 +129,71 @@ def _activity(ctx):
     return {"updates": rows} if rows else None
 
 
+def _glance(ctx):
+    """The tile row: five numbers that answer "is anything wrong?" from a doorway.
+
+    Every figure here already exists on some other panel. That is the point -
+    this is the summary layer, read from across the room, and each tile links
+    to the panel that explains it. A tile whose number cannot be worked out is
+    dropped rather than shown as a dash, so the row never pads itself out.
+    """
+    month = ctx["month"]
+    tiles = []
+
+    due = month["count_due"] if "count_due" in month else len(
+        [b for b in month["bills"] if b.status == "due"])
+    tiles.append({
+        "tint": "t1", "icon": "💵", "value": due,
+        "label": "bill" + ("" if due == 1 else "s") + " left",
+        "href": url_for("money.index"),
+        "state": "warn" if month.get("overdue") else "",
+    })
+
+    obligations = Obligation.query.filter_by(active=True).count()
+    if obligations:
+        tiles.append({
+            "tint": "t4", "icon": "🧾", "value": obligations,
+            "label": "obligation" + ("" if obligations == 1 else "s"),
+            "href": url_for("obligations.index"), "state": "",
+        })
+
+    try:
+        from ..services import disks as disk_service
+        report = disk_service.summary()
+        roots = [f for f in report.get("filesystems", []) if f.get("mount") == "/"]
+        if roots:
+            tiles.append({
+                "tint": "t3", "icon": "▦", "value": roots[0].get("avail_h", "—"),
+                "label": "disk free",
+                "href": url_for("system.disks"),
+                "state": "bad" if (roots[0].get("use_percent") or 0) >= 90
+                         else "warn" if (roots[0].get("use_percent") or 0) >= 75
+                         else "",
+            })
+    except Exception:
+        pass
+
+    sensors = sum(len(p.sensors) for p in ctx["places"])
+    if sensors:
+        tiles.append({
+            "tint": "t2", "icon": "🌡️", "value": sensors,
+            "label": "sensor" + ("" if sensors == 1 else "s"),
+            "href": url_for("places.index"), "state": "",
+        })
+
+    recipes = Recipe.query.count()
+    if recipes:
+        tiles.append({
+            "tint": "t5", "icon": "🍽️", "value": recipes,
+            "label": "recipe" + ("" if recipes == 1 else "s"),
+            "href": url_for("recipes.index"), "state": "",
+        })
+
+    return {"tiles": tiles} if tiles else None
+
+
 BUILDERS = {
+    "glance": _glance,
     "weather": _weather,
     "radar": _radar,
     "alerts": _alerts,

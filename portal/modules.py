@@ -10,6 +10,13 @@ templates/dashboard/. Nothing else needs to know about it.
 """
 
 MODULES = {
+    "glance": {
+        "label": "At a glance",
+        "icon": "▣",
+        "blurb": "A row of tiles across the top: bills left, disk free, sensors, recipes.",
+        "default": True,
+        "wide": True,
+    },
     "weather": {
         "label": "Weather",
         "icon": "🌤️",
@@ -90,7 +97,7 @@ MODULES = {
 # The order they appear in when nobody has said otherwise. Roughly: things that
 # need attention, then things you look at, then things you browse.
 DEFAULT_ORDER = [
-    "alerts", "weather", "bills", "obligations", "links",
+    "alerts", "glance", "weather", "bills", "obligations", "links",
     "essentials", "recipes", "pages", "activity",
 ]
 

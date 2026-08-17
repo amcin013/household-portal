@@ -1,0 +1,14 @@
+{#
+  The tile row. Sits above everything else and is deliberately not a card -
+  the tiles are the cards. Each links to the panel that explains its number.
+#}
+{% set d = panel.data %}
+<div class="stats glance">
+  {% for tile in d.tiles %}
+    <a class="stat {{ tile.tint }} {{ tile.state }}" href="{{ tile.href }}">
+      <span class="stat-icon">{{ tile.icon }}</span>
+      <span class="stat-value">{{ tile.value }}</span>
+      <span class="stat-label">{{ tile.label }}</span>
+    </a>
+  {% endfor %}
+</div>
