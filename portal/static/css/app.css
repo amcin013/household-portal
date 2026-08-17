@@ -6,13 +6,21 @@
    a dashboard template: panels with legend headers, hairline rules, figures
    that line up in columns, and colour reserved for meaning.
 
-   Two rules hold the whole thing together.
+   The surfaces were softened in Aug 2026: cards now float on a shadow with a
+   faint hairline, rather than being ruled boxes. The instrument thinking below
+   survived that change - it is about where meaning goes, not about edges.
+
+   Three rules hold the whole thing together.
 
    1. Colour is never decoration. The accent marks the live or current value;
-      good / warn / bad mark state. Nothing else is coloured.
+      good / warn / bad mark state. The one deliberate exception is the stat
+      tile chips, which use the theme's five tints to tell five tiles apart at
+      a glance - the hue is a label, not an ornament.
    2. A number that has a past shows it. The meter strip - a 20px inline
       sparkline with a lit endpoint - is the signature element, and it appears
       wherever there is history behind a figure.
+   3. Separation is a shadow, not a rule. Depth comes from --lift; hairlines
+      are faint and only there for themes where surface and page nearly match.
 
    Palette hues come from the theme block injected in <head> (portal/themes.py).
    Everything here is written against those variables so a theme swap is total.
@@ -20,9 +28,10 @@
 
 /* --- structural tokens, independent of theme hue ------------------------ */
 :root {
-  --r-sm: 3px;
-  --r-md: 5px;
-  --r-lg: 8px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
 
   --gap-1: .25rem;
   --gap-2: .5rem;
@@ -34,9 +43,26 @@
   --rail: 232px;
   --measure: 68ch;
 
-  /* Instruments do not float. Depth comes from the rule, not a drop shadow. */
-  --lift: 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
-  --lift-lg: 0 12px 32px color-mix(in srgb, #000 22%, transparent);
+  /* Cards float, and separation comes from the shadow rather than a hairline.
+     Tinted with --shadow-hue (the theme's own ink) instead of flat black, so
+     the lift reads as the same material as the page on light themes and does
+     not turn to mud on dark ones. Two layers: a tight contact shadow that
+     anchors the card, and a wide soft one that gives it height. */
+  --shadow-hue: color-mix(in srgb, var(--text) 62%, #000);
+  --lift:
+    0 1px 2px color-mix(in srgb, var(--shadow-hue) 10%, transparent),
+    0 6px 16px -6px color-mix(in srgb, var(--shadow-hue) 18%, transparent);
+  --lift-md:
+    0 2px 4px color-mix(in srgb, var(--shadow-hue) 12%, transparent),
+    0 12px 26px -10px color-mix(in srgb, var(--shadow-hue) 24%, transparent);
+  --lift-lg:
+    0 2px 4px color-mix(in srgb, var(--shadow-hue) 14%, transparent),
+    0 20px 42px -14px color-mix(in srgb, var(--shadow-hue) 32%, transparent);
+
+  /* Cards keep a hairline, but a faint one - it does the work on high-contrast
+     and on themes whose surface barely differs from the page behind it, where
+     a shadow alone leaves the card edge invisible. */
+  --card-edge: color-mix(in srgb, var(--border) 55%, transparent);
 
   --legend: .68rem;
   --track: .09em;
@@ -241,9 +267,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: var(--gap-5) 0; }
    ========================================================================== */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--card-edge);
   border-radius: var(--r-lg);
-  padding: var(--gap-4);
+  padding: var(--gap-4) calc(var(--gap-4) * 1.1);
   box-shadow: var(--lift);
 }
 .card + .card { margin-top: var(--gap-4); }
@@ -392,12 +418,48 @@ th.sortable[aria-sort=descending]::after { content: "↓"; opacity: 1; color: va
 /* ==========================================================================
    Readouts
    ========================================================================== */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--gap-2); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(142px, 1fr)); gap: var(--gap-3); }
 .stat {
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-  border-radius: var(--r-md); padding: .6rem .7rem;
+  background: var(--surface);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--r-md); padding: .8rem .85rem;
+  box-shadow: var(--lift);
 }
+/* A stat inside a card sits on the card, not on the page, so it drops the
+   lift - stacked shadows read as clutter rather than depth. */
+.card .stats .stat {
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  box-shadow: none;
+}
+
+/* The icon chip. Tinted from one of the theme's five accent hues, which is
+   what stops a row of tiles reading as five identical grey boxes. Set the
+   hue per tile with .t1 .. .t5; without one it falls back to the accent. */
+.stat-icon {
+  width: 2.1rem; height: 2.1rem; border-radius: var(--r-sm);
+  display: grid; place-items: center; font-size: 1.05rem;
+  margin-bottom: .5rem;
+  background: color-mix(in srgb, var(--tint, var(--accent)) 18%, transparent);
+  color: var(--tint, var(--accent));
+}
+/* The glance row is links, so it has to undo anchor styling and gain a
+   hover - a tile that navigates should look like it does. */
+.glance { margin-bottom: var(--gap-4); }
+.glance .stat {
+  display: block; text-decoration: none; color: inherit;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.glance .stat:hover { transform: translateY(-2px); box-shadow: var(--lift-md); }
+.glance .stat .stat-value { display: block; }
+.glance .stat .stat-label { display: block; }
+.glance .stat.warn .stat-value { color: var(--warn); }
+.glance .stat.bad  .stat-value { color: var(--bad); }
+
+.stat.t1 { --tint: var(--t1); }
+.stat.t2 { --tint: var(--t2); }
+.stat.t3 { --tint: var(--t3); }
+.stat.t4 { --tint: var(--t4); }
+.stat.t5 { --tint: var(--t5); }
 .stat-label {
   font-size: var(--legend); text-transform: uppercase; letter-spacing: var(--track);
   color: var(--text-dim); font-weight: 650;
@@ -410,6 +472,59 @@ th.sortable[aria-sort=descending]::after { content: "↓"; opacity: 1; color: va
 .stat.good .stat-value { color: var(--good); }
 .stat.bad  .stat-value { color: var(--bad); }
 .stat.warn .stat-value { color: var(--warn); }
+
+/* ==========================================================================
+   Theme picker
+   --------------------------------------------------------------------------
+   Every swatch carries its own theme's colours inline from the template, so
+   the grid shows 23 real palettes instead of 23 boxes with names on them.
+   Nothing here may set a colour, or it would override the theme being shown.
+   ========================================================================== */
+.theme-family + .theme-family { margin-top: var(--gap-5); }
+.theme-family > h3 { margin: 0 0 .1rem; font-size: .95rem; }
+.theme-family > p { margin: 0 0 var(--gap-3); }
+
+.theme-grid {
+  display: grid; gap: var(--gap-3);
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+}
+.theme-swatch {
+  position: relative; display: block; cursor: pointer;
+  border: 1px solid; border-radius: var(--r-md);
+  padding: .6rem .65rem .65rem;
+  box-shadow: var(--lift);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.theme-swatch:hover { transform: translateY(-2px); box-shadow: var(--lift-md); }
+.theme-swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-swatch:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* A miniature of the actual interface - rail, heading, body line, tile chips.
+   Recognisably the portal at 1/8 scale, so the swatch previews the thing the
+   theme will be applied to rather than an abstract row of dots. */
+.theme-mini {
+  display: block; position: relative; height: 62px; overflow: hidden;
+  border: 1px solid; border-radius: var(--r-sm); padding: .45rem .5rem;
+  margin-bottom: .5rem;
+}
+.tm-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+}
+.tm-line { display: block; height: 5px; border-radius: 3px; width: 62%; margin-left: .3rem; }
+.tm-line.short { width: 40%; margin-top: .3rem; opacity: .75; }
+.tm-dots { display: flex; gap: .22rem; margin: .5rem 0 0 .3rem; }
+.tm-dots i { width: 11px; height: 11px; border-radius: 4px; display: block; }
+
+.theme-name { display: block; font-weight: 650; font-size: .85rem; line-height: 1.2; }
+.theme-hint { display: block; font-size: .7rem; line-height: 1.3; margin-top: .1rem; }
+
+.theme-tick {
+  position: absolute; top: .5rem; right: .5rem;
+  width: 1.15rem; height: 1.15rem; border-radius: 50%;
+  display: none; place-items: center; font-size: .7rem; font-weight: 700;
+}
+.theme-swatch:has(input:checked) { transform: translateY(-2px); box-shadow: var(--lift-lg); }
+.theme-swatch:has(input:checked) .theme-tick { display: grid; }
 
 /* --- the meter strip: signature element -------------------------------- */
 .meter { display: flex; align-items: flex-end; gap: 2px; height: 20px; }
@@ -480,6 +595,29 @@ th.sortable[aria-sort=descending]::after { content: "↓"; opacity: 1; color: va
   font-family: var(--mono); font-size: .7rem; color: var(--text-dim);
 }
 .radar-missing { padding: var(--gap-4); border: 1px dashed var(--border); border-radius: var(--r-md); }
+
+/* The radar folded into a weather card, on the home page and the place page.
+   Collapsed by default so a property's card stays the size of a card - the
+   loop is a ~1MB animated GIF and there is no reason to pull it until asked. */
+.radar-inline { margin-top: .75rem; border-top: 1px solid var(--border); padding-top: .55rem; }
+.radar-inline > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: baseline;
+  gap: .45rem; font-size: var(--legend); text-transform: uppercase;
+  letter-spacing: var(--track); color: var(--text-dim); font-weight: 650;
+}
+.radar-inline > summary::-webkit-details-marker { display: none; }
+.radar-inline > summary::after {
+  content: "›"; margin-left: auto; transition: transform .15s ease;
+  display: inline-block; font-size: 1rem; line-height: 1;
+}
+.radar-inline[open] > summary::after { transform: rotate(90deg); }
+.radar-inline > summary:hover { color: var(--text); }
+.radar-inline img {
+  width: 100%; height: auto; display: block; margin-top: .5rem;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.radar-foot { margin: .35rem 0 0; }
 
 .alert-banner {
   display: flex; gap: var(--gap-2); align-items: flex-start;

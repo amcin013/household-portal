@@ -1,23 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Appearance · {{ site_name }}{% endblock %}
 
+{#
+  Grouped rather than one long grid: 23 themes in a single block is a wall of
+  swatches with no way in. The families answer "which of these is for me?"
+  before the colours have to.
+
+  The swatch previews itself - each one carries its own theme's colours inline,
+  so the grid shows 23 actual palettes rather than 23 identical boxes with
+  names on them. That is the only way to pick one without applying it first.
+#}
 {% macro theme_picker(name, selected) %}
-  <div class="theme-grid">
-    {% for key, theme in themes.items() %}
-      <label class="theme-swatch">
-        <input type="radio" name="{{ name }}" value="{{ key }}"
-               {{ 'checked' if selected == key }}>
-        <span class="theme-dots">
-          <i style="background:{{ theme.vars.bg }}"></i>
-          <i style="background:{{ theme.vars.surface }}"></i>
-          <i style="background:{{ theme.vars.accent }}"></i>
-          <i style="background:{{ theme.vars.text }}"></i>
-        </span>
-        <span class="theme-name">{{ theme.label }}</span>
-        <span class="theme-hint">{{ theme.hint }}</span>
-      </label>
-    {% endfor %}
-  </div>
+  {% for family_key, family_label, blurb, group in theme_families %}
+    <div class="theme-family">
+      <h3>{{ family_label }}</h3>
+      <p class="tiny muted">{{ blurb }}</p>
+      <div class="theme-grid">
+        {% for key, theme in group.items() %}
+          <label class="theme-swatch"
+                 style="background:{{ theme.vars.bg }};
+                        border-color:{{ theme.vars.border }};
+                        color:{{ theme.vars.text }}">
+            <input type="radio" name="{{ name }}" value="{{ key }}"
+                   {{ 'checked' if selected == key }}>
+            <span class="theme-mini" style="background:{{ theme.vars.surface }};
+                                            border-color:{{ theme.vars.border }}">
+              <span class="tm-bar" style="background:{{ theme.vars.accent }}"></span>
+              <span class="tm-line" style="background:{{ theme.vars.text }}"></span>
+              <span class="tm-line short" style="background:{{ theme.vars['text-dim'] }}"></span>
+              <span class="tm-dots">
+                <i style="background:{{ theme.vars.t1 }}"></i>
+                <i style="background:{{ theme.vars.t2 }}"></i>
+                <i style="background:{{ theme.vars.t3 }}"></i>
+                <i style="background:{{ theme.vars.t4 }}"></i>
+                <i style="background:{{ theme.vars.t5 }}"></i>
+              </span>
+            </span>
+            <span class="theme-name">{{ theme.label }}</span>
+            <span class="theme-hint" style="color:{{ theme.vars['text-dim'] }}">{{ theme.hint }}</span>
+            <span class="theme-tick" style="background:{{ theme.vars.accent }};
+                                            color:{{ theme.vars['accent-contrast'] }}">✓</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
 {% endmacro %}
 
 {% block content %}

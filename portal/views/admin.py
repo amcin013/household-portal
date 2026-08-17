@@ -8,7 +8,7 @@ from ..auth import admin_required
 from ..extensions import db
 from ..models import Food, Setting, User
 from ..modules import choices_for, save_layout
-from ..themes import DENSITIES, FONTS, THEMES
+from ..themes import DENSITIES, FONTS, THEMES, themes_by_family
 
 bp = Blueprint("admin", __name__, url_prefix="/settings")
 
@@ -63,6 +63,7 @@ def appearance():
         "admin/appearance.html",
         settings=Setting.all_as_dict(),
         themes=THEMES,
+        theme_families=themes_by_family(),
         fonts=FONTS,
         densities=DENSITIES,
     )
