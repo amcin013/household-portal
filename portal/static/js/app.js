@@ -190,19 +190,18 @@
     });
   }
 
-  // --- dashboard weather, fetched after paint ----------------------------
-  var weatherHost = document.getElementById("weatherCards");
-  if (weatherHost) {
-    fetch(weatherHost.getAttribute("data-url"), { credentials: "same-origin" })
+  // --- weather, fetched after paint --------------------------------------
+  // Driven off the cards themselves rather than a wrapper, so the panels can
+  // be reordered or switched off without this needing to know.
+  var weatherCards = document.querySelectorAll("[data-place] .weather-body");
+  if (weatherCards.length) {
+    fetch("/places/api/weather", { credentials: "same-origin" })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (places) { places.forEach(renderWeather); })
       .catch(function () {
-        weatherHost.querySelectorAll("[data-place]").forEach(function (card) {
-          var body = card.querySelector(".weather-body");
-          if (body) {
-            body.innerHTML =
-              '<p class="muted tiny">Could not load weather right now.</p>';
-          }
+        weatherCards.forEach(function (body) {
+          body.innerHTML =
+            '<p class="muted tiny">Could not load weather right now.</p>';
         });
       });
   }
@@ -220,16 +219,6 @@
     if (!body) return;
 
     var html = "";
-
-    if (place.alert) {
-      html +=
-        '<div class="alert-banner ' +
-        (place.alert.severity === "Extreme" || place.alert.severity === "Severe"
-          ? "severe" : "") +
-        '"><span>⚠️</span><span><b>' + esc(place.alert.event) + "</b>" +
-        (place.alert.severity ? " · " + esc(place.alert.severity) : "") +
-        "</span></div>";
-    }
 
     if (place.error && place.temp == null) {
       html += '<p class="muted tiny">' + esc(place.error) + "</p>";
@@ -285,6 +274,168 @@
 
     body.innerHTML = html;
   }
+
+
+  // --- arranging the home page -------------------------------------------
+  // Drag is the enhancement; the up/down buttons and the hidden order field
+  // do the same job without any of this running.
+  var widgetList = document.getElementById("widgetList");
+  if (widgetList) {
+    var orderField = document.getElementById("orderField");
+
+    var syncOrder = function () {
+      var keys = [].slice.call(widgetList.querySelectorAll("[data-key]"))
+        .map(function (row) { return row.getAttribute("data-key"); });
+      orderField.value = keys.join(",");
+    };
+
+    widgetList.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-move]");
+      if (!btn) return;
+      var row = btn.closest(".widget-row");
+      if (btn.getAttribute("data-move") === "up") {
+        if (row.previousElementSibling) {
+          widgetList.insertBefore(row, row.previousElementSibling);
+        }
+      } else if (row.nextElementSibling) {
+        widgetList.insertBefore(row.nextElementSibling, row);
+      }
+      syncOrder();
+    });
+
+    widgetList.addEventListener("change", function (e) {
+      if (e.target.type === "checkbox") {
+        e.target.closest(".widget-row").classList.toggle("off", !e.target.checked);
+      }
+    });
+
+    var dragged = null;
+    widgetList.addEventListener("dragstart", function (e) {
+      dragged = e.target.closest(".widget-row");
+      if (!dragged) return;
+      dragged.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      // Firefox will not start a drag without something on the transfer.
+      e.dataTransfer.setData("text/plain", dragged.getAttribute("data-key"));
+    });
+    widgetList.addEventListener("dragend", function () {
+      if (dragged) dragged.classList.remove("dragging");
+      dragged = null;
+      syncOrder();
+    });
+    widgetList.addEventListener("dragover", function (e) {
+      if (!dragged) return;
+      e.preventDefault();
+      var over = e.target.closest(".widget-row");
+      if (!over || over === dragged) return;
+      var box = over.getBoundingClientRect();
+      var after = (e.clientY - box.top) / box.height > 0.5;
+      widgetList.insertBefore(dragged, after ? over.nextElementSibling : over);
+    });
+  }
+
+  // --- weather alerts strip on the home page ------------------------------
+  var alertStrip = document.getElementById("alertStrip");
+  if (alertStrip) {
+    fetch(alertStrip.getAttribute("data-url"), { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (places) {
+        var withAlerts = places.filter(function (p) { return p.alert; });
+        if (!withAlerts.length) return;
+        alertStrip.innerHTML = withAlerts.map(function (p) {
+          var severe = p.alert.severity === "Extreme" || p.alert.severity === "Severe";
+          return '<div class="alert-banner ' + (severe ? "severe" : "") + '">' +
+            "<span>\u26a0\ufe0f</span><span><b>" + esc(p.alert.event) + "</b> at " +
+            esc(p.name) + (p.alert.severity ? " \u00b7 " + esc(p.alert.severity) : "") +
+            "</span></div>";
+        }).join("");
+      })
+      .catch(function () { /* the weather cards already report the failure */ });
+  }
+
+
+  // --- inline bill edits --------------------------------------------------
+  // Each cell is already a working form; this just posts it in the background
+  // and repaints the row and the month totals instead of reloading.
+  var billTables = document.querySelectorAll(".billtable");
+  if (billTables.length) {
+    document.body.classList.add("has-js");
+
+    var postQuick = function (form, extra) {
+      var data = new FormData(form);
+      if (extra) Object.keys(extra).forEach(function (k) { data.set(k, extra[k]); });
+      return fetch(form.action, {
+        method: "POST", body: data, credentials: "same-origin",
+        headers: { "X-Requested-With": "fetch" }
+      }).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); });
+    };
+
+    var paintTotals = function (d) {
+      var money = function (n) {
+        return (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString();
+      };
+      var set = function (name, text) {
+        var el = document.querySelector('[data-stat="' + name + '"]');
+        if (el) el.textContent = text;
+      };
+      set("total", money(d.month_total));
+      set("remaining", money(d.month_remaining));
+      set("count", d.count_due);
+    };
+
+    billTables.forEach(function (table) {
+      table.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-toggle]");
+        if (!btn) return;
+        e.preventDefault();
+        var form = btn.closest("form");
+        var row = btn.closest("tr");
+        btn.disabled = true;
+        postQuick(form).then(function (d) {
+          btn.disabled = false;
+          btn.textContent = d.status === "paid" ? "☑" : "☐";
+          row.classList.toggle("paid", d.status === "paid");
+          row.classList.toggle("overdue", d.overdue);
+          var badge = row.querySelector(".pill-good, .pill-bad");
+          if (badge) badge.remove();
+          paintTotals(d);
+        }).catch(function () { btn.disabled = false; form.submit(); });
+      });
+
+      // Amount: save when the field loses focus, or on Enter.
+      table.addEventListener("focusout", function (e) {
+        var input = e.target.closest("[data-amount]");
+        if (!input || input.value === input.defaultValue) return;
+        var form = input.closest("form");
+        postQuick(form).then(function (d) {
+          input.defaultValue = Number(d.amount).toFixed(2);
+          input.value = input.defaultValue;
+          input.classList.add("saved");
+          setTimeout(function () { input.classList.remove("saved"); }, 900);
+          paintTotals(d);
+        }).catch(function () { form.submit(); });
+      });
+      table.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && e.target.closest("[data-amount]")) {
+          e.preventDefault();
+          e.target.blur();
+        }
+      });
+    });
+  }
+
+  // --- radar that cannot load -------------------------------------------
+  // The loop comes from weather.gov, so a server with no internet - or an
+  // outage - would otherwise leave a broken-image icon sitting on the page.
+  document.querySelectorAll("[data-radar]").forEach(function (img) {
+    img.addEventListener("error", function () {
+      var note = document.createElement("div");
+      note.className = "radar-missing tiny muted";
+      note.textContent = "Radar is not reachable right now. It comes straight "
+        + "from weather.gov, so this needs internet access.";
+      img.replaceWith(note);
+    });
+  });
 
   // --- auto-submit filter selects ----------------------------------------
   document.querySelectorAll("[data-autosubmit]").forEach(function (el) {

@@ -1,0 +1,18 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>🧭 Essentials</h2>
+    <a class="card-link" href="{{ url_for('docs.essentials') }}">Open →</a>
+  </div>
+  <p class="muted tiny">{{ settings.get('emergency_note', '') }}</p>
+  <ul class="list">
+    {% for page in d.pages %}
+      <li>
+        <a href="{{ url_for('docs.detail', slug=page.slug) }}">
+          {{ page.icon or '📄' }} {{ page.title }}
+        </a>
+        {% if page.summary %}<div class="tiny muted truncate">{{ page.summary }}</div>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>

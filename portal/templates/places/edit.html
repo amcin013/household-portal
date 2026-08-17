@@ -79,8 +79,17 @@
   <label class="check">
     <input type="checkbox" name="show_on_dashboard"
            {{ 'checked' if not place or place.show_on_dashboard }}>
-    Show a weather card on the home page
+    <span>Show a weather card on the home page</span>
   </label>
+  <label class="check">
+    <input type="checkbox" name="show_radar" {{ 'checked' if place and place.show_radar }}>
+    <span>Include this place in the radar panel</span>
+  </label>
+  <div class="hint">
+    The NOAA radar loop for the station covering this spot. It is a large
+    animated image, so it is off until you ask for it. Switch the Radar panel on
+    under <a href="{{ url_for('admin.home_layout') }}">your home page</a> too.
+  </div>
 
   <div class="form-actions">
     <button class="btn btn-primary">{{ 'Save' if place else 'Add place' }}</button>

@@ -122,6 +122,49 @@ class Setting(db.Model):
         return {r.key: r.value for r in Setting.query.all()}
 
 
+class DashboardWidget(db.Model):
+    """One panel on one person's home page.
+
+    Per person rather than shared: the home page is the first thing anyone sees
+    and what belongs there differs by who you are. Whoever is mid-remodel wants
+    project costs; whoever cooks wants the recipes. A row exists only once
+    somebody has customised - until then the defaults in modules.py apply, so a
+    new account gets a sensible page without any setup.
+    """
+
+    __tablename__ = "dashboard_widgets"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "widget_key", name="uq_user_widget"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    widget_key = db.Column(db.String(40), nullable=False)
+    position = db.Column(db.Integer, default=0)
+    enabled = db.Column(db.Boolean, default=True)
+    # Per-widget options, for when a widget grows them (which property a
+    # weather panel shows, how many rows a list gives).
+    config_json = db.Column(db.Text, default="{}")
+
+    user = db.relationship("User", backref=db.backref(
+        "widgets", cascade="all, delete-orphan", order_by="DashboardWidget.position"
+    ))
+
+    @property
+    def config(self):
+        try:
+            return json.loads(self.config_json or "{}")
+        except ValueError:
+            return {}
+
+    @config.setter
+    def config(self, mapping):
+        self.config_json = json.dumps(mapping or {})
+
+
 # --------------------------------------------------------------------------
 # Links
 # --------------------------------------------------------------------------
@@ -249,6 +292,10 @@ class Place(db.Model):
     icon = db.Column(db.String(16), default="🏠")
     sort_order = db.Column(db.Integer, default=0)
     show_on_dashboard = db.Column(db.Boolean, default=True)
+    # The NOAA radar loop for this spot. Off by default: it is a big animated
+    # image, and on a wall tablet it is a lot of bandwidth for something you
+    # only want when the weather is doing something.
+    show_radar = db.Column(db.Boolean, default=False)
 
     facts = db.relationship(
         "PlaceFact",
@@ -268,6 +315,17 @@ class Place(db.Model):
     @property
     def has_coords(self):
         return self.latitude is not None and self.longitude is not None
+
+    @property
+    def radar_station(self):
+        """Which NEXRAD site covers this spot.
+
+        NOAA hands it back with the forecast, so it arrives with the first
+        weather fetch rather than needing to be looked up or configured. One
+        extra query per place, and there are two of them.
+        """
+        cache = WeatherCache.query.filter_by(place_id=self.id).first()
+        return (cache.payload or {}).get("radar_station") if cache else None
 
 
 class PlaceFact(db.Model):

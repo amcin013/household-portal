@@ -7,6 +7,7 @@ from flask_login import current_user, login_required
 from ..auth import admin_required
 from ..extensions import db
 from ..models import Food, Setting, User
+from ..modules import choices_for, save_layout
 from ..themes import DENSITIES, FONTS, THEMES
 
 bp = Blueprint("admin", __name__, url_prefix="/settings")
@@ -75,6 +76,20 @@ def reset_personal_theme():
     db.session.commit()
     flash("Back to the household look.", "info")
     return redirect(url_for("admin.appearance"))
+
+
+@bp.route("/home", methods=["GET", "POST"])
+@login_required
+def home_layout():
+    """Which panels appear on this person's home page, and in what order."""
+    if request.method == "POST":
+        order = [k.strip() for k in (request.form.get("order") or "").split(",")
+                 if k.strip()]
+        save_layout(current_user, request.form.getlist("enabled"), order)
+        flash("Home page updated.", "success")
+        return redirect(url_for("admin.home_layout"))
+
+    return render_template("admin/home_layout.html", widgets=choices_for(current_user))
 
 
 @bp.route("/people")

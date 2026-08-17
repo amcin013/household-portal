@@ -1,0 +1,31 @@
+{% set d = panel.data %}
+<section class="card radar-card">
+  <div class="card-head">
+    <h2>🌧️ Radar</h2>
+    <span class="tiny muted">NOAA · updates every 5 minutes</span>
+  </div>
+  <div class="radar-grid">
+    {% for place in d.places %}
+      <figure class="radar-frame">
+        <figcaption>
+          {{ place.icon }} {{ place.name }}
+          <span class="muted">{{ place.city }}</span>
+        </figcaption>
+        {% set station = place.radar_station %}
+        {% if station %}
+          <a href="https://radar.weather.gov/station/{{ station|lower }}/standard"
+             target="_blank" rel="noopener" title="Open the full radar for {{ station }}">
+            <img loading="lazy" alt="Radar loop near {{ place.name }}" data-radar
+                 src="https://radar.weather.gov/ridge/standard/{{ station }}_loop.gif">
+          </a>
+          <span class="radar-station">{{ station }}</span>
+        {% else %}
+          <div class="radar-missing tiny muted">
+            No radar station known yet. It is picked up with the forecast —
+            <a href="{{ url_for('places.detail', slug=place.slug) }}">refresh {{ place.name }}</a>.
+          </div>
+        {% endif %}
+      </figure>
+    {% endfor %}
+  </div>
+</section>

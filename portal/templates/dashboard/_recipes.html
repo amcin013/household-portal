@@ -1,0 +1,29 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>🍳 Kitchen</h2>
+    <a class="card-link" href="{{ url_for('recipes.index') }}">Cookbook →</a>
+  </div>
+  {% if d.any %}
+    <ul class="list">
+      {% for recipe in d.recipes %}
+        <li class="list-row">
+          <span class="grow truncate">
+            <a href="{{ url_for('recipes.detail', slug=recipe.slug) }}">{{ recipe.title }}</a>
+          </span>
+          {% if recipe.favorite %}<span title="Favourite">⭐</span>{% endif %}
+          <span class="muted tiny nowrap">
+            {% if recipe.total_minutes %}{{ recipe.total_minutes | minutes }}{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="mt">
+      <a class="btn btn-sm" href="{{ url_for('recipes.shopping') }}">🛒 Shopping list</a>
+    </div>
+  {% else %}
+    <p class="muted tiny">
+      No recipes yet. <a href="{{ url_for('recipes.new') }}">Add the first one →</a>
+    </p>
+  {% endif %}
+</section>

@@ -2,8 +2,8 @@
 from datetime import date, datetime
 
 from flask import (
-    Blueprint, flash, redirect, render_template, request, send_file, session,
-    url_for,
+    Blueprint, flash, jsonify, redirect, render_template, request, send_file,
+    session, url_for,
 )
 from flask_login import login_required
 
@@ -29,27 +29,123 @@ ACCOUNT_KINDS = {
 }
 
 
+SORTS = {
+    "name": lambda b: (b.payee.name or "").lower(),
+    "category": lambda b: ((b.payee.category or "").lower(), (b.payee.name or "").lower()),
+    "due": lambda b: (b.due_date or date.max, (b.payee.name or "").lower()),
+    "amount": lambda b: (b.amount or 0),
+    "status": lambda b: (b.status or "", (b.payee.name or "").lower()),
+}
+
+
 @bp.route("/")
 @login_required
 def index():
+    """This month's bills as a table you can sort, filter and group.
+
+    All three are done on the server off query parameters, so the page works
+    with JavaScript switched off; the script layer only makes the same actions
+    instant.
+    """
     period = request.args.get("period") or current_period()
     if not _valid_period(period):
         period = current_period()
 
     view = money_service.month_view(period)
-    accounts = Account.query.filter_by(active=True).order_by(
-        Account.sort_order, Account.name
-    ).all()
+    bills = list(view["bills"])
+
+    query = (request.args.get("q") or "").strip()
+    if query:
+        needle = query.lower()
+        bills = [
+            b for b in bills
+            if needle in (b.payee.name or "").lower()
+            or needle in (b.payee.category or "").lower()
+            or needle in (b.payee.account_hint or "").lower()
+        ]
+
+    status = request.args.get("status") or "all"
+    if status == "due":
+        bills = [b for b in bills if b.status == "due"]
+    elif status == "paid":
+        bills = [b for b in bills if b.status == "paid"]
+    elif status == "overdue":
+        bills = [b for b in bills
+                 if b.status == "due" and b.due_date and b.due_date < date.today()]
+
+    sort = request.args.get("sort") or "due"
+    direction = request.args.get("dir") or "asc"
+    bills.sort(key=SORTS.get(sort, SORTS["due"]), reverse=(direction == "desc"))
+
+    group_by = request.args.get("group") or "none"
+    groups = []
+    if group_by == "category":
+        buckets = {}
+        for bill in bills:
+            buckets.setdefault(bill.payee.category or "Other", []).append(bill)
+        groups = [
+            {"label": name, "bills": rows,
+             "total": sum(b.amount or 0 for b in rows),
+             "unpaid": sum(1 for b in rows if b.status == "due")}
+            for name, rows in sorted(buckets.items())
+        ]
+    else:
+        groups = [{"label": None, "bills": bills,
+                   "total": sum(b.amount or 0 for b in bills),
+                   "unpaid": sum(1 for b in bills if b.status == "due")}]
 
     return render_template(
         "money/index.html",
         view=view,
+        bills=bills,
+        groups=groups,
         label=month_label(period),
-        accounts=accounts,
+        accounts=Account.query.filter_by(active=True).order_by(
+            Account.sort_order, Account.name).all(),
         net_worth=money_service.net_worth(),
-        history=money_service.history(6),
+        history=money_service.history(12),
         today=date.today(),
+        q=query, status=status, sort=sort, dir=direction, group_by=group_by,
+        shown_total=sum(b.amount or 0 for b in bills),
     )
+
+
+@bp.route("/bills/<int:bill_id>/quick", methods=["POST"])
+@login_required
+def quick_update(bill_id):
+    """Inline edits from the table. Answers JSON to a fetch, and redirects back
+    for a plain form post so the same route serves both."""
+    bill = db.get_or_404(BillPayment, bill_id)
+
+    if "amount" in request.form:
+        amount = _float(request.form.get("amount"))
+        if amount is not None:
+            bill.amount = amount
+    if "due_date" in request.form:
+        due = _date(request.form.get("due_date"))
+        if due:
+            bill.due_date = due
+    action = request.form.get("action")
+    if action == "toggle":
+        if bill.status == "paid":
+            bill.status, bill.paid_on = "due", None
+        else:
+            bill.status, bill.paid_on = "paid", date.today()
+    db.session.commit()
+
+    if request.headers.get("X-Requested-With") == "fetch":
+        view = money_service.month_view(bill.period)
+        return jsonify({
+            "ok": True,
+            "amount": bill.amount,
+            "status": bill.status,
+            "overdue": bool(bill.status == "due" and bill.due_date
+                            and bill.due_date < date.today()),
+            "month_total": view["total"],
+            "month_remaining": view["remaining"],
+            "count_due": view["count_due"],
+        })
+    return redirect(request.referrer or url_for("money.index", period=bill.period))
 
 
 @bp.route("/bills/<int:bill_id>/pay", methods=["POST"])
@@ -301,12 +397,17 @@ def forecast():
         months = max(1, min(int(request.args.get("months", 12)), 60))
     except ValueError:
         months = 12
-    data = money_service.forecast(months)
+    try:
+        back = max(6, min(int(request.args.get("back", 24)), 72))
+    except ValueError:
+        back = 24
+
     return render_template(
         "money/forecast.html",
-        data=data,
+        data=money_service.forecast(months),
         months=months,
-        history=money_service.history(12),
+        back=back,
+        spend=money_service.spending_over_time(back),
     )
 
 

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Home page · {{ site_name }}{% endblock %}
+
+{% block breadcrumb %}
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="{{ url_for('admin.index') }}">Settings</a>
+    <span class="sep">/</span><span>Home page</span>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Your home page</h1>
+    <p>
+      Tick what you want and drag to reorder. This is yours —
+      {{ current_user.display_name }}'s — and does not change what anyone else sees.
+    </p>
+  </div>
+</div>
+
+<form method="post" id="layoutForm">
+  {{ csrf_field() }}
+  {# The order travels as one hidden field so it survives with JS switched off,
+     where the up/down buttons rewrite it instead of dragging. #}
+  <input type="hidden" name="order" id="orderField"
+         value="{{ widgets | map(attribute='key') | join(',') }}">
+
+  <div class="grid" style="grid-template-columns:1fr minmax(0,280px);align-items:start;gap:1.25rem">
+    <div class="card">
+      <div class="card-head">
+        <h2>Panels</h2>
+        <span class="tiny muted">{{ widgets | selectattr('on') | list | length }} shown</span>
+      </div>
+
+      <div id="widgetList">
+        {% for w in widgets %}
+          <div class="widget-row {{ '' if w.on else 'off' }}" draggable="true" data-key="{{ w.key }}">
+            <span class="w-grab" aria-hidden="true">⠿</span>
+            <label class="check" style="margin:0">
+              <input type="checkbox" name="enabled" value="{{ w.key }}" {{ 'checked' if w.on }}>
+            </label>
+            <span class="w-body">
+              <span class="w-name">{{ w.icon }} {{ w.label }}</span>
+              <span class="w-blurb">{{ w.blurb }}</span>
+            </span>
+            <span class="w-move no-print">
+              <button type="button" class="btn btn-sm btn-ghost" data-move="up" aria-label="Move up">▲</button>
+              <button type="button" class="btn btn-sm btn-ghost" data-move="down" aria-label="Move down">▼</button>
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary">Save layout</button>
+        <a class="btn" href="{{ url_for('dashboard.index') }}">Back to home</a>
+      </div>
+    </div>
+
+    <div>
+      <div class="card mb">
+        <div class="card-head"><h3>How it works</h3></div>
+        <p class="tiny muted">
+          A panel with nothing to show hides itself rather than sitting there
+          empty — weather with no properties set up, obligations with no
+          balances. Switching it on now means it appears the moment there is
+          something in it.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Radar</h3></div>
+        <p class="tiny muted">
+          The radar panel draws the NOAA loop for any property with radar
+          switched on. Turn it on per property from the
+          <a href="{{ url_for('places.index') }}">place's edit page</a> — it is a
+          large animated image, so it is off until you ask for it.
+        </p>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

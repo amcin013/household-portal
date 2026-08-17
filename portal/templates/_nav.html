@@ -1,0 +1,61 @@
+{#
+  The rail. Grouped by what you are doing rather than by where the data lives:
+  Money is the heaviest-used section so it comes first, and Usage sits inside it
+  because a meter reading only means anything next to the bill it explains.
+
+  Each group is a <details> so it works with no JavaScript at all. The group
+  holding the current page is open; the others stay shut, which keeps the rail
+  short enough to read.
+#}
+{% macro item(endpoint, label, match=None, params={}) %}
+  {% set active = nav_active == endpoint or (match and nav_active.startswith(match)) %}
+  <a href="{{ url_for(endpoint, **params) }}" class="nav-item {{ 'active' if active }}"
+     {{ 'aria-current=page' if active }}>
+    <span class="nav-label">{{ label }}</span>
+  </a>
+{% endmacro %}
+
+{% macro group(title, prefixes) %}
+  {# On a section page only that section opens, which keeps the rail short.
+     On Home nothing matches, so everything opens rather than showing four
+     shut drawers and no way to see what is in them. #}
+  {% set on_home = nav_active == 'dashboard.index' %}
+  {% set here = on_home or nav_active.split('.')[0] in prefixes %}
+  <details class="nav-group" {{ 'open' if here }}>
+    <summary>
+      <span>{{ title }}</span>
+      <span class="nav-caret" aria-hidden="true">›</span>
+    </summary>
+    <div class="nav-items">{{ caller() }}</div>
+  </details>
+{% endmacro %}
+
+<nav class="nav" aria-label="Sections">
+  {{ item('dashboard.index', 'Home') }}
+
+  {% call group('Money', ['money', 'obligations']) %}
+    {{ item('money.index', 'This month') }}
+    {{ item('money.payees', 'Bills & companies', match='money.edit_payee') }}
+    {{ item('money.usage_import', 'Usage & meters') }}
+    {{ item('money.accounts', 'Accounts', match='money.edit_account') }}
+    {{ item('obligations.index', 'Obligations', match='obligations.') }}
+    {{ item('money.forecast', 'Trends & forecast') }}
+    {{ item('money.import_sheet', 'Import & export') }}
+  {% endcall %}
+
+  {% call group('House', ['places', 'system', 'links']) %}
+    {{ item('places.index', 'Places', match='places.') }}
+    {{ item('system.disks', 'Storage') }}
+    {{ item('links.index', 'Links', match='links.') }}
+  {% endcall %}
+
+  {% call group('Kitchen', ['recipes']) %}
+    {{ item('recipes.index', 'Recipes', match='recipes.detail') }}
+    {{ item('recipes.shopping', 'Shopping list') }}
+  {% endcall %}
+
+  {% call group('Reference', ['docs']) %}
+    {{ item('docs.index', 'How-to & info', match='docs.detail') }}
+    {{ item('docs.essentials', 'Essentials') }}
+  {% endcall %}
+</nav>

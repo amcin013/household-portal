@@ -63,6 +63,10 @@ def create_app(config_object=Config):
 
     with app.app_context():
         db.create_all()
+        # create_all makes missing tables but never missing columns, which on a
+        # live install fails silently until something queries the new field.
+        from .migrations import sync_columns
+        sync_columns()
         _seed_defaults()
 
     @app.cli.command("seed")

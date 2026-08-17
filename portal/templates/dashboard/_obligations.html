@@ -1,0 +1,33 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>🧾 Obligations</h2>
+    <a class="card-link" href="{{ url_for('obligations.index') }}">All →</a>
+  </div>
+  <div class="stats mb">
+    <div class="stat">
+      <div class="stat-label">Still owed</div>
+      <div class="stat-value">{{ d.total | money_short }}</div>
+    </div>
+    {% if d.uncleared %}
+      <div class="stat warn">
+        <div class="stat-label">Not cleared</div>
+        <div class="stat-value">{{ d.uncleared }}</div>
+        <div class="stat-note">payments out</div>
+      </div>
+    {% endif %}
+  </div>
+  <ul class="list">
+    {% for ob in d.obligations %}
+      <li class="list-row">
+        <span class="grow truncate">
+          <a href="{{ url_for('obligations.detail', slug=ob.slug) }}">{{ ob.name }}</a>
+        </span>
+        {% if ob.payments_remaining %}
+          <span class="tiny muted nowrap">{{ ob.payments_remaining }} left</span>
+        {% endif %}
+        <b class="num">{{ ob.balance | money_short }}</b>
+      </li>
+    {% endfor %}
+  </ul>
+</section>

@@ -11,8 +11,11 @@ It works with no internet access at all except for weather.
 
 ## What is in it
 
-**Home** — a greeting, current conditions at each property, what is due to be
-paid, pinned links, essential pages, and what has changed recently.
+**Home** — a grid of panels you choose. Weather, NOAA radar, bills due,
+obligations, accounts, pinned links, essentials, recipes, storage, recent
+activity. Tick what you want and drag to reorder under Settings → Home page;
+the layout is per person, so what you arrange is yours. A panel with nothing to
+show hides itself rather than sitting empty.
 
 **Places** — one page per property. NOAA weather and active watches/warnings,
 indoor sensor readings, and a table of the things nobody remembers: wifi
@@ -20,8 +23,11 @@ password, water shutoff, trash day, gate codes. Anything marked sensitive stays
 masked until you click it.
 
 **Money** — the part that replaces a spreadsheet.
-- *This month*: every bill with its amount, due date, and a **Pay** button that
-  goes straight to that company's payment page. Tick them off as you go.
+- *This month*: every bill as a sortable, filterable table. Search by company,
+  category or account; filter to unpaid or past due; group by category. Tick a
+  bill off or correct an amount straight in the row — no page reload, and the
+  month totals repaint as you go. Sorting and filtering are query parameters, so
+  every view is a URL you can bookmark, and it all works with JavaScript off.
 - *Bills & payments*: the companies you pay, with per-company history so a
   utility that has been creeping up is obvious.
 - *Accounts*: savings, TSP, anything owed. Each balance you record is kept with
@@ -32,8 +38,9 @@ masked until you click it.
   through written → sent → cleared, and works the remaining balance out from
   what you actually recorded rather than extrapolating. A new bill goes on as a
   charge, so the balance can go up as well as down.
-- *Forecast*: projects cash and net worth forward, and warns you if more is
-  going out than coming in.
+- *Trends & forecast*: what the house has actually cost, month by month and by
+  category, with the forward projection underneath it on the same page — a
+  projection is only worth reading next to the record it comes from.
 - Import an existing spreadsheet — including the wide kind, with the companies
   down the side and years of months across the top. Export everything back to
   `.xlsx` at any time.
@@ -44,7 +51,9 @@ caused by using more, which are completely different problems. Readings load
 from Green Button XML, a Smart Meter Texas CSV, or anything with a date and a
 number in it.
 
-**Recipes** — scale any recipe to a different number of servings and the
+**Recipes** — a cookbook rather than a list: chapters by course, a contents
+page when there is more than one chapter, and an alphabetical index at the back.
+Scale any recipe to a different number of servings and the
 quantities rewrite themselves as proper fractions (`1½ lb`, not `1.5`). "Salt to
 taste" stays as it is. Nutrition fills in for any ingredient linked to the food
 table, and tells you honestly what it could not count. Tick ingredients off as
@@ -59,6 +68,24 @@ around.
 
 **Appearance** — eight themes, eight font choices, three text sizes. Everyone
 can pick their own look, or follow the household default.
+
+---
+
+## How it is laid out
+
+The sidebar groups sections by what you are doing rather than by where the data
+lives:
+
+- **Money** — This month, Bills & companies, Usage & meters, Accounts,
+  Obligations, Trends & forecast, Import & export
+- **House** — Places, Storage, Links
+- **Kitchen** — Recipes, Shopping list
+- **Reference** — How-to & info, Essentials
+
+Money comes first because it is the heaviest-used part, and Usage sits inside it
+because a meter reading only means something next to the bill it explains. Each
+group is a plain `<details>`, so the rail works with no JavaScript; the group
+holding the page you are on is the one that opens.
 
 ---
 

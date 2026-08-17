@@ -1,0 +1,55 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>💵 {{ d.month.period | month_label }}</h2>
+    <a class="card-link" href="{{ url_for('money.index') }}">All bills →</a>
+  </div>
+
+  {% if d.has_any %}
+    <div class="stats mb">
+      <div class="stat">
+        <div class="stat-label">Due this month</div>
+        <div class="stat-value">{{ d.month.total | money_short }}</div>
+      </div>
+      <div class="stat {{ 'good' if d.month.remaining == 0 }}">
+        <div class="stat-label">Still to pay</div>
+        <div class="stat-value">{{ d.month.remaining | money_short }}</div>
+        <div class="stat-note">{{ d.month.count_due }} bill{{ 's' if d.month.count_due != 1 }}</div>
+      </div>
+    </div>
+
+    {% if d.overdue %}
+      <p class="tiny"><span class="pill pill-bad">{{ d.overdue|length }} past due</span></p>
+    {% endif %}
+
+    {% if d.due_soon %}
+      <ul class="list">
+        {% for bill in d.due_soon %}
+          <li class="list-row">
+            <span class="grow truncate">
+              {{ bill.payee.name }}
+              {% if bill.payee.autopay %}<span class="pill">auto</span>{% endif %}
+            </span>
+            <span class="muted tiny nowrap">{{ bill.due_date | humandate }}</span>
+            <b class="num">{{ bill.amount | money_short }}</b>
+            {% if bill.payee.pay_url %}
+              <a class="btn btn-sm" href="{{ bill.payee.pay_url }}"
+                 target="_blank" rel="noopener">Pay</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted tiny">Nothing due in the next ten days. 🎉</p>
+    {% endif %}
+  {% else %}
+    <div class="empty" style="padding:1.5rem 1rem">
+      <span class="e-icon">💵</span>
+      <p class="tiny">No companies set up yet, so there is nothing to show here.</p>
+      <div class="flex" style="justify-content:center">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('money.new_payee') }}">Add a company</a>
+        <a class="btn btn-sm" href="{{ url_for('money.import_sheet') }}">Import a sheet</a>
+      </div>
+    </div>
+  {% endif %}
+</section>

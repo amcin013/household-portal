@@ -1,11 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Recipes · {{ site_name }}{% endblock %}
+{% block title %}Cookbook · {{ site_name }}{% endblock %}
+
+{% macro card(recipe) %}
+  <a class="recipe-card" href="{{ url_for('recipes.detail', slug=recipe.slug) }}">
+    <span class="thumb">
+      {% if recipe.image_url %}<img src="{{ recipe.image_url }}" alt="" loading="lazy">
+      {% else %}🍽️{% endif %}
+    </span>
+    <span class="body">
+      <span class="r-title">{% if recipe.favorite %}⭐ {% endif %}{{ recipe.title }}</span>
+      {% if recipe.description %}
+        <span class="tiny muted">{{ recipe.description | plain(80) }}</span>
+      {% endif %}
+      <span class="r-meta">
+        {{ recipe.servings }} {{ recipe.serving_noun }}
+        {%- if recipe.total_minutes %} · {{ recipe.total_minutes | minutes }}{% endif %}
+      </span>
+    </span>
+  </a>
+{% endmacro %}
 
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Recipes</h1>
-    <p>{{ recipes|length }} recipe{{ 's' if recipes|length != 1 }}</p>
+    <h1>Cookbook</h1>
+    <p>
+      {{ total }} recipe{{ 's' if total != 1 }}
+      {%- if filtered %} · {{ recipes | length }} matching{% endif %}
+    </p>
   </div>
   <div class="page-actions">
     <a class="btn" href="{{ url_for('recipes.shopping') }}">🛒 Shopping list</a>
@@ -13,73 +35,115 @@
   </div>
 </div>
 
-<form method="get" class="card mb">
-  <div class="field-row" style="margin-bottom:0">
-    <div class="field" style="margin-bottom:0">
-      <label for="q">Search</label>
-      <input type="search" id="q" name="q" value="{{ q }}" placeholder="chicken, chili, casserole…">
+{% if total %}
+  <form method="get" class="card mb">
+    <input type="hidden" name="view" value="{{ view }}">
+    <div class="field-row" style="margin:0;align-items:flex-end">
+      <div class="field" style="margin:0">
+        <label for="q">Find</label>
+        <input type="search" id="q" name="q" value="{{ q }}"
+               placeholder="chicken, chili, casserole…">
+      </div>
+      <div class="field" style="margin:0;max-width:180px">
+        <label for="course">Course</label>
+        <select id="course" name="course" data-autosubmit>
+          <option value="">All</option>
+          {% for c in courses %}
+            <option value="{{ c }}" {{ 'selected' if c == course }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex" style="padding-bottom:.05rem">
+        <button class="btn btn-primary">Search</button>
+        {% if filtered %}<a class="btn" href="{{ url_for('recipes.index') }}">Clear</a>{% endif %}
+      </div>
     </div>
-    <div class="field" style="margin-bottom:0;max-width:200px">
-      <label for="course">Course</label>
-      <select id="course" name="course" data-autosubmit>
-        <option value="">All</option>
-        {% for c in courses %}
-          <option value="{{ c }}" {{ 'selected' if c == course }}>{{ c }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div style="display:flex;align-items:flex-end;gap:.5rem">
-      <button class="btn btn-primary">Search</button>
-      {% if q or course or tag %}
-        <a class="btn" href="{{ url_for('recipes.index') }}">Clear</a>
-      {% endif %}
-    </div>
-  </div>
 
-  {% if tags %}
-    <div class="chips mt">
-      {% for t in tags %}
-        <a class="chip {{ 'on' if t == tag }}"
-           href="{{ url_for('recipes.index', tag='' if t == tag else t) }}">{{ t }}</a>
-      {% endfor %}
-    </div>
-  {% endif %}
-</form>
+    {% if tags %}
+      <div class="chips mt">
+        {% for t in tags %}
+          <a class="chip {{ 'on' if t == tag }}"
+             href="{{ url_for('recipes.index', tag='' if t == tag else t, q=q, course=course) }}">{{ t }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </form>
+{% endif %}
 
 {% if recipes %}
-  <div class="recipe-grid">
-    {% for recipe in recipes %}
-      <a class="recipe-card" href="{{ url_for('recipes.detail', slug=recipe.slug) }}">
-        <div class="thumb">
-          {% if recipe.image_url %}
-            <img src="{{ recipe.image_url }}" alt="" loading="lazy">
-          {% else %}🍽️{% endif %}
-        </div>
-        <div class="body">
-          <div class="r-title">
-            {% if recipe.favorite %}⭐ {% endif %}{{ recipe.title }}
-          </div>
-          {% if recipe.description %}
-            <div class="tiny muted">{{ recipe.description | plain(90) }}</div>
-          {% endif %}
-          <div class="r-meta">
-            {{ recipe.servings }} {{ recipe.serving_noun }}
-            {% if recipe.total_minutes %} · {{ recipe.total_minutes | minutes }}{% endif %}
-            {% if recipe.course %} · {{ recipe.course }}{% endif %}
-          </div>
-        </div>
-      </a>
-    {% endfor %}
-  </div>
+  {% if favorites and not filtered %}
+    <div class="card mb">
+      <div class="card-head">
+        <h2>On the shelf</h2>
+        <span class="tiny muted">the ones you keep coming back to</span>
+      </div>
+      <div class="recipe-grid">
+        {% for recipe in favorites %}{{ card(recipe) }}{% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  {# Contents, the way a cookbook opens. #}
+  {% if chapters | length > 1 %}
+    <div class="card mb">
+      <div class="card-head">
+        <h2>Contents</h2>
+        <span class="tiny muted">{{ chapters | length }} chapters</span>
+      </div>
+      <div class="tile-grid">
+        {% for name, rows in chapters %}
+          <a class="link-tile" href="#chapter-{{ loop.index }}">
+            <span class="li-icon">{{ loop.index }}</span>
+            <span style="min-width:0">
+              <span class="li-title">{{ name }}</span>
+              <span class="li-sub">{{ rows | length }} recipe{{ 's' if rows|length != 1 }}</span>
+            </span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% for name, rows in chapters %}
+    <section class="card mb" id="chapter-{{ loop.index }}">
+      <div class="card-head">
+        <h2>{{ name }}</h2>
+        <span class="tiny muted">{{ rows | length }}</span>
+      </div>
+      <div class="recipe-grid">
+        {% for recipe in rows %}{{ card(recipe) }}{% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+
+  {# The index at the back: every recipe, alphabetical, for when you know the
+     name and just want to get to it. #}
+  <details class="disclose">
+    <summary>Index — all {{ recipes | length }} by name</summary>
+    <div class="tile-grid">
+      {% for recipe in recipes | sort(attribute='title') %}
+        <a class="link-tile" href="{{ url_for('recipes.detail', slug=recipe.slug) }}">
+          <span style="min-width:0">
+            <span class="li-title">{{ recipe.title }}</span>
+            <span class="li-sub">{{ recipe.course or 'Uncategorised' }}</span>
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  </details>
 {% else %}
   <div class="empty">
     <span class="e-icon">🍳</span>
-    {% if q or course or tag %}
-      <p>No recipes matched that.</p>
-      <a class="btn" href="{{ url_for('recipes.index') }}">Show all</a>
+    {% if filtered %}
+      <p>Nothing matched that.</p>
+      <a class="btn" href="{{ url_for('recipes.index') }}">Show everything</a>
     {% else %}
-      <p>No recipes yet.</p>
-      <a class="btn btn-primary" href="{{ url_for('recipes.new') }}">Add the first one</a>
+      <p>The cookbook is empty.</p>
+      <p class="tiny">
+        Recipes get chapters by course, scale to any number of servings, and
+        add up nutrition for anything linked to the food table.
+      </p>
+      <a class="btn btn-primary" href="{{ url_for('recipes.new') }}">Write the first one</a>
     {% endif %}
   </div>
 {% endif %}

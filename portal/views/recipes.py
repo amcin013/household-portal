@@ -12,12 +12,29 @@ from ..services.nutrition import nutrition_for, scale_ingredients, shopping_list
 bp = Blueprint("recipes", __name__, url_prefix="/recipes")
 
 
+COURSE_ORDER = ["Breakfast", "Lunch", "Dinner", "Side", "Bread", "Sauce",
+                "Snack", "Dessert", "Drink"]
+
+
+def _course_rank(name):
+    try:
+        return COURSE_ORDER.index(name)
+    except ValueError:
+        return len(COURSE_ORDER)
+
+
 @bp.route("/")
 @login_required
 def index():
+    """The cookbook: chapters by course, with an index and the shelf up top.
+
+    A flat grid is fine at ten recipes and useless at two hundred, so this
+    reads the way a cookbook does - contents first, then chapters.
+    """
     q = (request.args.get("q") or "").strip()
     course = (request.args.get("course") or "").strip()
     tag = (request.args.get("tag") or "").strip()
+    view = request.args.get("view") or "chapters"
 
     query = Recipe.query
     if q:
@@ -35,21 +52,24 @@ def index():
     if tag:
         query = query.filter(Recipe.tags.ilike(f"%{tag}%"))
 
-    recipes = query.order_by(Recipe.favorite.desc(), Recipe.title).all()
+    recipes = query.order_by(Recipe.title).all()
+    filtered = bool(q or course or tag)
 
-    courses = sorted(
-        {r.course for r in Recipe.query.all() if r.course}
-    )
-    tags = sorted({t for r in Recipe.query.all() for t in r.tag_list})
+    chapters = {}
+    for recipe in recipes:
+        chapters.setdefault(recipe.course or "Everything else", []).append(recipe)
+    chapters = sorted(chapters.items(), key=lambda kv: (_course_rank(kv[0]), kv[0]))
 
+    everything = Recipe.query.all()
     return render_template(
         "recipes/index.html",
         recipes=recipes,
-        courses=courses,
-        tags=tags,
-        q=q,
-        course=course,
-        tag=tag,
+        chapters=chapters,
+        favorites=[r for r in recipes if r.favorite][:6],
+        courses=sorted({r.course for r in everything if r.course}, key=_course_rank),
+        tags=sorted({t for r in everything for t in r.tag_list}),
+        total=len(everything),
+        q=q, course=course, tag=tag, view=view, filtered=filtered,
     )
 
 

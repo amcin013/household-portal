@@ -233,3 +233,52 @@ def payee_history(payee, months=12):
          "status": (by_period[p].status if p in by_period else None)}
         for p in periods
     ]
+
+
+def spending_over_time(months=24):
+    """What the household actually spent, month by month.
+
+    The counterweight to the forecast: a projection is only worth reading next
+    to the record it is projecting from.
+    """
+    period = current_period()
+    periods = [shift_period(period, -i) for i in range(months - 1, -1, -1)]
+    wanted = set(periods)
+
+    rows = {p: {"period": p, "total": 0.0, "paid": 0.0, "count": 0,
+                "categories": {}} for p in periods}
+
+    for bill in (
+        BillPayment.query.filter(BillPayment.period.in_(wanted))
+        .join(Payee).all()
+    ):
+        row = rows[bill.period]
+        amount = bill.amount or 0
+        row["total"] += amount
+        row["count"] += 1
+        if bill.is_paid:
+            row["paid"] += amount
+        category = bill.payee.category or "Other"
+        row["categories"][category] = row["categories"].get(category, 0) + amount
+
+    series = [rows[p] for p in periods]
+    with_spend = [r for r in series if r["total"] > 0]
+
+    totals_by_category = {}
+    for row in series:
+        for name, amount in row["categories"].items():
+            totals_by_category[name] = totals_by_category.get(name, 0) + amount
+
+    amounts = [r["total"] for r in with_spend]
+    return {
+        "series": series,
+        "months": len(with_spend),
+        "total": sum(amounts),
+        "average": (sum(amounts) / len(amounts)) if amounts else 0,
+        "highest": max(with_spend, key=lambda r: r["total"]) if with_spend else None,
+        "lowest": min(with_spend, key=lambda r: r["total"]) if with_spend else None,
+        "by_category": sorted(totals_by_category.items(), key=lambda kv: -kv[1]),
+        "recent_average": (
+            sum(r["total"] for r in with_spend[-12:]) / min(len(with_spend), 12)
+        ) if with_spend else 0,
+    }

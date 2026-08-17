@@ -1,0 +1,17 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>📄 Pinned how-tos</h2>
+    <a class="card-link" href="{{ url_for('docs.index') }}">All pages →</a>
+  </div>
+  <ul class="list">
+    {% for page in d.pages %}
+      <li>
+        <a href="{{ url_for('docs.detail', slug=page.slug) }}">
+          {{ page.icon or '📄' }} {{ page.title }}
+        </a>
+        <span class="muted tiny"> · {{ page.category }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>

@@ -1,0 +1,25 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>💾 Storage</h2>
+    <a class="card-link" href="{{ url_for('system.disks') }}">Details →</a>
+  </div>
+  {% if d.report.warnings %}
+    <p class="tiny"><span class="pill pill-warn">{{ d.report.warnings|length }} to look at</span></p>
+  {% endif %}
+  <ul class="list">
+    {% for fs in d.report.filesystems[:6] %}
+      {% set pct = fs.use_percent or 0 %}
+      <li>
+        <div class="flex-between tiny" style="margin-bottom:.25rem">
+          <span class="truncate">{{ fs.mount }}</span>
+          <span class="num muted">{{ fs.avail_h }} free · {{ pct }}%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill {{ 'bar-bad' if pct >= 90 else 'bar-warn' if pct >= 75 }}"
+               style="width:{{ pct }}%"></div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+</section>

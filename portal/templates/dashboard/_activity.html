@@ -1,0 +1,14 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head"><h2>🕒 Recently updated</h2></div>
+  <ul class="list">
+    {% for kind, title, when, endpoint, params in d.updates %}
+      <li class="list-row">
+        <span class="grow truncate">
+          <a href="{{ url_for(endpoint, **params) }}">{{ title }}</a>
+        </span>
+        <span class="muted tiny nowrap">{{ when | timeago }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>

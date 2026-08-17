@@ -8,211 +8,35 @@
 
 {% block content %}
   {% if settings.get('dashboard_greeting') == '1' %}
-    <div class="page-head">
-      <div>
-        <h1>{{ greeting }}, {{ who }}.</h1>
-        <p>{{ today.strftime('%A, %B ') }}{{ today.day }}{{ '' if today.day not in (1,21,31) else '' }}</p>
-      </div>
+    <header class="hero">
+      <h1>{{ greeting }}, {{ who }}.</h1>
+      <p>{{ today.strftime('%A, %B ') }}{{ today.day }}</p>
+    </header>
+  {% endif %}
+
+  {# Full-width panels first, then the card grid. #}
+  {% for panel in panels if panel.key in ('alerts', 'radar') %}
+    {% include 'dashboard/_' ~ panel.key ~ '.html' %}
+  {% endfor %}
+
+  {% set grid_panels = panels | rejectattr('key', 'in', ['alerts', 'radar']) | list %}
+  {% if grid_panels %}
+    <div class="grid dash-grid">
+      {% for panel in grid_panels %}
+        {% include 'dashboard/_' ~ panel.key ~ '.html' %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <span class="e-icon">🏡</span>
+      <p>Every panel is switched off.</p>
+      <a class="btn btn-primary" href="{{ url_for('admin.home_layout') }}">
+        Choose what goes here
+      </a>
     </div>
   {% endif %}
 
-  {% if overdue %}
-    <div class="alert-banner severe">
-      <span>⏰</span>
-      <span>
-        <b>{{ overdue|length }} bill{{ 's' if overdue|length != 1 }} past due</b> —
-        {% for b in overdue[:3] %}{{ b.payee.name }}{{ ', ' if not loop.last }}{% endfor %}
-        {%- if overdue|length > 3 %} and {{ overdue|length - 3 }} more{% endif %}.
-        <a href="{{ url_for('money.index') }}">Open this month →</a>
-      </span>
-    </div>
-  {% endif %}
-
-  <div class="grid dash-grid">
-
-    {# ---------- weather per property ---------- #}
-    {% if places %}
-      <section id="weatherCards" data-url="{{ url_for('places.api_weather') }}"
-               style="display:contents">
-        {% for place in places %}
-          <div class="card weather-card" data-place="{{ place.id }}">
-            <div class="card-head">
-              <h2>{{ place.icon }} {{ place.name }}</h2>
-              <a class="card-link" href="{{ url_for('places.detail', slug=place.slug) }}">
-                {{ place.city or 'Details' }} →
-              </a>
-            </div>
-            <div class="weather-body">
-              <div class="weather-top">
-                <div class="weather-icon skeleton">☀️</div>
-                <div>
-                  <div class="weather-temp skeleton">00°</div>
-                  <div class="weather-meta skeleton">Loading conditions</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
-      </section>
-    {% endif %}
-
-    {# ---------- money ---------- #}
-    <div class="card">
-      <div class="card-head">
-        <h2>💵 {{ month.period | month_label }}</h2>
-        <a class="card-link" href="{{ url_for('money.index') }}">All bills →</a>
-      </div>
-
-      <div class="stats mb">
-        <div class="stat">
-          <div class="stat-label">Due this month</div>
-          <div class="stat-value">{{ month.total | money_short }}</div>
-        </div>
-        <div class="stat {{ 'good' if month.remaining == 0 }}">
-          <div class="stat-label">Still to pay</div>
-          <div class="stat-value">{{ month.remaining | money_short }}</div>
-          <div class="stat-note">{{ month.count_due }} bill{{ 's' if month.count_due != 1 }}</div>
-        </div>
-      </div>
-
-      {% if due_soon %}
-        <ul class="list">
-          {% for bill in due_soon %}
-            <li class="list-row">
-              <span class="grow truncate">
-                {{ bill.payee.name }}
-                {% if bill.payee.autopay %}<span class="pill">auto</span>{% endif %}
-              </span>
-              <span class="muted tiny nowrap">{{ bill.due_date | humandate }}</span>
-              <b class="num">{{ bill.amount | money_short }}</b>
-              {% if bill.payee.pay_url %}
-                <a class="btn btn-sm" href="{{ bill.payee.pay_url }}" target="_blank" rel="noopener">Pay</a>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="muted tiny">Nothing due in the next ten days. 🎉</p>
-      {% endif %}
-    </div>
-
-    {# ---------- quick links ---------- #}
-    <div class="card">
-      <div class="card-head">
-        <h2>🔗 Quick links</h2>
-        <a class="card-link" href="{{ url_for('links.index') }}">All links →</a>
-      </div>
-      {% if pinned_links %}
-        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:.5rem">
-          {% for link in pinned_links %}
-            <a class="link-tile" href="{{ link.url or url_for('links.edit', link_id=link.id) }}"
-               {% if link.url and link.open_new_tab %}target="_blank" rel="noopener"{% endif %}>
-              <span class="li-icon">{{ link.icon or '🔗' }}</span>
-              <span style="min-width:0">
-                <span class="li-title">{{ link.title }}</span>
-                <span class="li-sub">
-                  {% if link.url %}{{ link.description or link.host }}
-                  {% else %}needs an address{% endif %}
-                </span>
-              </span>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="muted tiny">
-          Pin a link and it shows up here.
-          <a href="{{ url_for('links.new') }}">Add one →</a>
-        </p>
-      {% endif %}
-    </div>
-
-    {# ---------- essentials ---------- #}
-    {% if essentials %}
-      <div class="card">
-        <div class="card-head">
-          <h2>🧭 Essentials</h2>
-          <a class="card-link" href="{{ url_for('docs.essentials') }}">Open →</a>
-        </div>
-        <p class="muted tiny">{{ settings.get('emergency_note', '') }}</p>
-        <ul class="list">
-          {% for page in essentials %}
-            <li>
-              <a href="{{ url_for('docs.detail', slug=page.slug) }}">
-                {{ page.icon or '📄' }} {{ page.title }}
-              </a>
-              {% if page.summary %}<div class="tiny muted truncate">{{ page.summary }}</div>{% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
-
-    {# ---------- recipes ---------- #}
-    <div class="card">
-      <div class="card-head">
-        <h2>🍳 Kitchen</h2>
-        <a class="card-link" href="{{ url_for('recipes.index') }}">All recipes →</a>
-      </div>
-      {% set shown = favorites or recent_recipes %}
-      {% if shown %}
-        <ul class="list">
-          {% for recipe in shown %}
-            <li class="list-row">
-              <span class="grow truncate">
-                <a href="{{ url_for('recipes.detail', slug=recipe.slug) }}">{{ recipe.title }}</a>
-              </span>
-              {% if recipe.favorite %}<span title="Favourite">⭐</span>{% endif %}
-              <span class="muted tiny nowrap">
-                {% if recipe.total_minutes %}{{ recipe.total_minutes | minutes }}{% endif %}
-              </span>
-            </li>
-          {% endfor %}
-        </ul>
-        <div class="mt">
-          <a class="btn btn-sm" href="{{ url_for('recipes.shopping') }}">🛒 Build a shopping list</a>
-        </div>
-      {% else %}
-        <p class="muted tiny">
-          No recipes yet. <a href="{{ url_for('recipes.new') }}">Add the first one →</a>
-        </p>
-      {% endif %}
-    </div>
-
-    {# ---------- how-tos ---------- #}
-    {% if pinned_pages %}
-      <div class="card">
-        <div class="card-head">
-          <h2>📄 Pinned how-tos</h2>
-          <a class="card-link" href="{{ url_for('docs.index') }}">All pages →</a>
-        </div>
-        <ul class="list">
-          {% for page in pinned_pages %}
-            <li>
-              <a href="{{ url_for('docs.detail', slug=page.slug) }}">
-                {{ page.icon or '📄' }} {{ page.title }}
-              </a>
-              <span class="muted tiny"> · {{ page.category }}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
-
-    {# ---------- recent activity ---------- #}
-    {% if updates %}
-      <div class="card">
-        <div class="card-head"><h2>🕒 Recently updated</h2></div>
-        <ul class="list">
-          {% for kind, title, when, endpoint, params in updates %}
-            <li class="list-row">
-              <span class="grow truncate">
-                <a href="{{ url_for(endpoint, **params) }}">{{ title }}</a>
-              </span>
-              <span class="muted tiny nowrap">{{ when | timeago }}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
-  </div>
+  <p class="tiny muted mt" style="text-align:center">
+    <a href="{{ url_for('admin.home_layout') }}">Customise this page</a>
+  </p>
 {% endblock %}

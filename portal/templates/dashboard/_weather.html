@@ -1,0 +1,20 @@
+{% set d = panel.data %}
+{% for place in d.places %}
+  <section class="card weather-card" data-place="{{ place.id }}">
+    <div class="card-head">
+      <h2>{{ place.icon }} {{ place.name }}</h2>
+      <a class="card-link" href="{{ url_for('places.detail', slug=place.slug) }}">
+        {{ place.city or 'Details' }} →
+      </a>
+    </div>
+    <div class="weather-body">
+      <div class="weather-top">
+        <div class="weather-icon skeleton">☀️</div>
+        <div>
+          <div class="weather-temp skeleton">00°</div>
+          <div class="weather-meta skeleton">Loading conditions</div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endfor %}

@@ -1,0 +1,4 @@
+{% set d = panel.data %}
+{# Filled in by the same weather fetch the cards use; stays empty when there is
+   nothing active, which is most of the time. #}
+<div id="alertStrip" data-url="{{ url_for('places.api_weather') }}"></div>

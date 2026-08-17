@@ -287,6 +287,7 @@ def _apply(place, form):
     place.notes = form.get("notes")
     place.icon = (form.get("icon") or "🏠").strip()[:16] or "🏠"
     place.show_on_dashboard = form.get("show_on_dashboard") == "on"
+    place.show_radar = form.get("show_radar") == "on"
 
     for field in ("latitude", "longitude"):
         raw = (form.get(field) or "").strip()

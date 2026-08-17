@@ -1,0 +1,25 @@
+{% set d = panel.data %}
+<section class="card">
+  <div class="card-head">
+    <h2>🏦 Accounts</h2>
+    <a class="card-link" href="{{ url_for('money.accounts') }}">All →</a>
+  </div>
+  <div class="stat mb">
+    <div class="stat-label">Net worth</div>
+    <div class="stat-value">{{ d.net_worth | money_short }}</div>
+  </div>
+  <ul class="list">
+    {% for a in d.accounts[:6] %}
+      <li class="list-row">
+        <span class="grow truncate">{{ a.name }}</span>
+        {% set change = a.change_over(1) %}
+        {% if change is not none %}
+          <span class="tiny nowrap" style="color:var({{ '--good' if change >= 0 else '--bad' }})">
+            {{ '+' if change > 0 }}{{ change | money_short }}
+          </span>
+        {% endif %}
+        <b class="num">{{ a.balance | money_short }}</b>
+      </li>
+    {% endfor %}
+  </ul>
+</section>

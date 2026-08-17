@@ -176,15 +176,16 @@ FONTS = {
     "system": {
         "label": "System",
         "stack": ("-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "
-                  "'Helvetica Neue', Arial, sans-serif"),
+                  "'Helvetica Neue', Arial, 'Liberation Sans', 'DejaVu Sans', "
+                  "sans-serif"),
     },
     "humanist": {
         "label": "Humanist",
-        "stack": "'Segoe UI', Candara, 'Trebuchet MS', Verdana, sans-serif",
+        "stack": "'Segoe UI', Candara, 'Trebuchet MS', Verdana, 'DejaVu Sans', sans-serif",
     },
     "grotesque": {
         "label": "Grotesque",
-        "stack": "'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', sans-serif",
+        "stack": "'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', 'DejaVu Sans', sans-serif",
     },
     "rounded": {
         "label": "Rounded",

@@ -12,99 +12,63 @@
 </head>
 <body>
 {% if current_user.is_authenticated %}
+<a class="skip-link" href="#main">Skip to content</a>
+
 <div class="shell">
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{{ url_for('dashboard.index') }}">
-      <span class="brand-mark">🏡</span>
-      <span>
-        <span class="brand-name">{{ site_name }}</span><br>
+      <span class="brand-mark" aria-hidden="true">🏡</span>
+      <span class="brand-text">
+        <span class="brand-name">{{ site_name }}</span>
         <span class="brand-tag">{{ site_tagline }}</span>
       </span>
     </a>
 
-    <nav class="nav">
-      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if nav_active == 'dashboard.index' }}">
-        <span class="nav-icon">🏠</span> Home
-      </a>
-
-      <div class="nav-label">The house</div>
-      <a href="{{ url_for('places.index') }}" class="{{ 'active' if nav_active.startswith('places.') }}">
-        <span class="nav-icon">📍</span> Places
-      </a>
-      <a href="{{ url_for('docs.index') }}" class="{{ 'active' if nav_active.startswith('docs.') and nav_active != 'docs.essentials' }}">
-        <span class="nav-icon">📄</span> How-to &amp; info
-      </a>
-      <a href="{{ url_for('docs.essentials') }}" class="{{ 'active' if nav_active == 'docs.essentials' }}">
-        <span class="nav-icon">🧭</span> Essentials
-      </a>
-      <a href="{{ url_for('links.index') }}" class="{{ 'active' if nav_active.startswith('links.') }}">
-        <span class="nav-icon">🔗</span> Links
-      </a>
-      <a href="{{ url_for('system.disks') }}" class="{{ 'active' if nav_active.startswith('system.') }}">
-        <span class="nav-icon">💾</span> Storage
-      </a>
-
-      <div class="nav-label">Money</div>
-      <a href="{{ url_for('money.index') }}" class="{{ 'active' if nav_active == 'money.index' }}">
-        <span class="nav-icon">📅</span> This month
-      </a>
-      <a href="{{ url_for('money.payees') }}" class="{{ 'active' if nav_active in ('money.payees', 'money.new_payee', 'money.edit_payee') }}">
-        <span class="nav-icon">💵</span> Bills &amp; payments
-      </a>
-      <a href="{{ url_for('money.accounts') }}" class="{{ 'active' if nav_active in ('money.accounts', 'money.new_account', 'money.edit_account') }}">
-        <span class="nav-icon">🏦</span> Accounts
-      </a>
-      <a href="{{ url_for('obligations.index') }}" class="{{ 'active' if nav_active.startswith('obligations.') }}">
-        <span class="nav-icon">🧾</span> Obligations
-      </a>
-      <a href="{{ url_for('money.forecast') }}" class="{{ 'active' if nav_active == 'money.forecast' }}">
-        <span class="nav-icon">📈</span> Forecast
-      </a>
-
-      <div class="nav-label">Kitchen</div>
-      <a href="{{ url_for('recipes.index') }}" class="{{ 'active' if nav_active.startswith('recipes.') and nav_active != 'recipes.shopping' }}">
-        <span class="nav-icon">🍳</span> Recipes
-      </a>
-      <a href="{{ url_for('recipes.shopping') }}" class="{{ 'active' if nav_active == 'recipes.shopping' }}">
-        <span class="nav-icon">🛒</span> Shopping list
-      </a>
-    </nav>
+    {% include '_nav.html' %}
 
     <div class="sidebar-foot">
-      <div class="flex" style="gap:.6rem">
+      <a class="who" href="{{ url_for('admin.index') }}">
         <span class="avatar">
           {% if current_user.avatar_url %}<img src="{{ current_user.avatar_url }}" alt="">
           {% else %}{{ current_user.initials }}{% endif %}
         </span>
-        <span class="grow" style="min-width:0">
-          <div class="tiny" style="font-weight:600">{{ current_user.display_name }}</div>
-          <a class="tiny muted" href="{{ url_for('admin.index') }}">Settings</a>
-          ·
-          <a class="tiny muted" href="{{ url_for('auth.logout') }}">Sign out</a>
+        <span class="who-text">
+          <span class="who-name">{{ current_user.display_name }}</span>
+          <span class="who-sub">Settings</span>
         </span>
-      </div>
+      </a>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        {{ csrf_field() }}
+        <button class="btn btn-ghost btn-sm" title="Sign out">⏻</button>
+      </form>
     </div>
   </aside>
 
   <div class="main">
     <header class="topbar">
-      <button class="btn btn-ghost menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+      <button class="btn btn-ghost menu-btn" id="menuBtn" aria-label="Menu"
+              aria-expanded="false" aria-controls="sidebar">☰</button>
       <form class="searchbar" action="{{ url_for('search.index') }}" method="get" role="search">
         <input type="search" name="q" placeholder="Search recipes, how-tos, bills…"
                value="{{ request.args.get('q', '') }}" aria-label="Search the portal">
+        <kbd class="search-hint" aria-hidden="true">/</kbd>
       </form>
-      <div class="flex" style="margin-left:auto">
+      <div class="topbar-actions">
         {% block topbar_actions %}{% endblock %}
       </div>
     </header>
 
-    <main class="content {% block content_class %}{% endblock %}">
+    <main class="content {% block content_class %}{% endblock %}" id="main">
+      {% block breadcrumb %}{% endblock %}
+
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="flashes">
             {% for category, message in messages %}
-              <div class="flash flash-{{ category }}">
-                <span>{{ {'success':'✓','error':'✕','warning':'!','info':'i'}.get(category,'i') }}</span>
+              <div class="flash flash-{{ category }}" role="status">
+                <span class="flash-mark" aria-hidden="true">
+                  {{ {'success':'✓','error':'✕','warning':'!','info':'i'}.get(category,'i') }}
+                </span>
                 <span>{{ message }}</span>
               </div>
             {% endfor %}
