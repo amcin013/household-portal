@@ -4,8 +4,12 @@ Run with:  flask --app wsgi seed
 Safe to run twice - it skips anything already there.
 """
 from .extensions import db
-from .models import Food, Link, Page, Payee, Place, PlaceFact, unique_slug
+from .models import (
+    Food, Link, Page, Payee, Place, PlaceFact, Recipe, RecipeIngredient,
+    unique_slug,
+)
 from .seed_foods import FOODS
+from .seed_recipes import RECIPES
 
 PLACES = [
     {
@@ -271,6 +275,35 @@ def run_seed():
             Page(slug=unique_slug(Page, spec["title"], "page"), **spec)
         )
         created.append(f"page: {spec['title']}")
+
+    for spec in RECIPES:
+        if Recipe.query.filter_by(title=spec["title"]).first():
+            continue
+        recipe = Recipe(
+            slug=unique_slug(Recipe, spec["title"], "recipe"),
+            title=spec["title"],
+            description=spec["description"],
+            servings=spec["servings"],
+            serving_noun=spec["serving_noun"],
+            prep_minutes=spec["prep_minutes"],
+            cook_minutes=spec["cook_minutes"],
+            instructions=spec["instructions"],
+            notes=spec.get("notes"),
+            source=spec.get("source"),
+            course=spec["course"],
+            tags=spec["tags"],
+            favorite=spec.get("favorite", False),
+        )
+        db.session.add(recipe)
+        db.session.flush()
+        for position, (qty, unit, item, note, heading) in enumerate(spec["ingredients"]):
+            db.session.add(
+                RecipeIngredient(
+                    recipe_id=recipe.id, position=position, quantity=qty,
+                    unit=unit, item=item, note=note, heading=heading,
+                )
+            )
+        created.append(f"recipe: {recipe.title}")
 
     for name, kcal, protein, carbs, fat, fiber, sodium, units in FOODS:
         if Food.query.filter_by(name=name).first():
