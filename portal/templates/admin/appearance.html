@@ -89,10 +89,11 @@
           <select id="font" name="font">
             {% for key, font in fonts.items() %}
               <option value="{{ key }}" {{ 'selected' if settings.get('font') == key }}
-                      style="font-family:{{ font.stack }}">{{ font.label }}</option>
+                      style="font-family:{{ font.stack }}">{{ font.label }} — {{ font.note }}</option>
             {% endfor %}
           </select>
-          <div class="hint">Only fonts already on the device — nothing is downloaded.</div>
+          <div class="hint">Shipped with the portal itself — nothing is fetched from
+            the internet, so these work the same on the wall tablet.</div>
         </div>
         <div class="field">
           <label for="density">Text size</label>

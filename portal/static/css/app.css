@@ -26,6 +26,44 @@
    Everything here is written against those variables so a theme swap is total.
    ========================================================================== */
 
+/* ==========================================================================
+   Fonts - shipped with the portal, not borrowed from the device
+   --------------------------------------------------------------------------
+   The stacks used to name Segoe UI, Candara, Trebuchet, Nunito, Rockwell and
+   friends. None of those exist on Arch, so every one of them resolved to Noto
+   Sans and the font picker did nothing at all - five of eight options were
+   the same face.
+
+   These are variable woff2 files served from our own /static/fonts, so the
+   picker works, and the portal still loads nothing from the internet. One
+   file per family covers every weight; font-display:swap means text paints
+   in a fallback immediately rather than hanging on a blank screen.
+   ========================================================================== */
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 100 900;
+  font-display: swap; src: url("../fonts/inter.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 200 800;
+  font-display: swap; src: url("../fonts/jakarta.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope"; font-style: normal; font-weight: 200 800;
+  font-display: swap; src: url("../fonts/manrope.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito"; font-style: normal; font-weight: 200 1000;
+  font-display: swap; src: url("../fonts/nunito.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4"; font-style: normal; font-weight: 200 900;
+  font-display: swap; src: url("../fonts/sourceserif.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800;
+  font-display: swap; src: url("../fonts/jetbrainsmono.woff2") format("woff2");
+}
+
 /* --- structural tokens, independent of theme hue ------------------------ */
 :root {
   --r-sm: 9px;

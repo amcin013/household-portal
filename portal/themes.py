@@ -468,46 +468,73 @@ def themes_by_family():
     ]
 
 
-# Only fonts that ship with common systems, so nothing has to be downloaded.
+# Shipped with the portal as variable woff2 in static/fonts, not borrowed from
+# whatever the device happens to have. The old stacks named Segoe UI, Candara,
+# Trebuchet, Rockwell and friends; none of those exist on Arch, so every option
+# collapsed to Noto Sans and the picker did nothing. Each entry below is a real,
+# distinct face. The fallbacks after it only matter for the seconds before the
+# file lands, or if a browser refuses woff2.
 FONTS = {
+    "inter": {
+        "label": "Inter",
+        "note": "The modern interface standard. Neutral, dense, very legible small.",
+        "stack": "'Inter', system-ui, 'Liberation Sans', sans-serif",
+    },
+    "jakarta": {
+        "label": "Plus Jakarta Sans",
+        "note": "Geometric with a bit of warmth. Closest to the reference mock-up.",
+        "stack": "'Plus Jakarta Sans', system-ui, 'Liberation Sans', sans-serif",
+    },
+    "manrope": {
+        "label": "Manrope",
+        "note": "Clean and slightly rounded. Good on a wall tablet.",
+        "stack": "'Manrope', system-ui, 'Liberation Sans', sans-serif",
+    },
+    "nunito": {
+        "label": "Nunito",
+        "note": "Softly rounded and friendly. Reads well in the kitchen.",
+        "stack": "'Nunito', system-ui, 'Liberation Sans', sans-serif",
+    },
+    "sourceserif": {
+        "label": "Source Serif",
+        "note": "A proper reading serif. Suits recipes and how-to pages.",
+        "stack": "'Source Serif 4', Georgia, 'Liberation Serif', serif",
+    },
+    "jetbrainsmono": {
+        "label": "JetBrains Mono",
+        "note": "Everything monospaced. Every figure lines up; unusual but honest.",
+        "stack": "'JetBrains Mono', ui-monospace, 'Liberation Mono', monospace",
+    },
     "system": {
-        "label": "System",
-        "stack": ("-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "
-                  "'Helvetica Neue', Arial, 'Liberation Sans', 'DejaVu Sans', "
-                  "sans-serif"),
-    },
-    "humanist": {
-        "label": "Humanist",
-        "stack": "'Segoe UI', Candara, 'Trebuchet MS', Verdana, 'DejaVu Sans', sans-serif",
-    },
-    "grotesque": {
-        "label": "Grotesque",
-        "stack": "'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', 'DejaVu Sans', sans-serif",
-    },
-    "rounded": {
-        "label": "Rounded",
-        "stack": ("ui-rounded, 'SF Pro Rounded', 'Nunito', 'Trebuchet MS', "
-                  "Verdana, sans-serif"),
-    },
-    "serif": {
-        "label": "Serif",
-        "stack": "Georgia, 'Iowan Old Style', 'Times New Roman', 'Liberation Serif', serif",
-    },
-    "bookish": {
-        "label": "Bookish",
-        "stack": "'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif",
-    },
-    "slab": {
-        "label": "Slab",
-        "stack": "Rockwell, 'Roboto Slab', 'Courier New', Georgia, serif",
-    },
-    "mono": {
-        "label": "Monospace",
-        "stack": "ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
+        "label": "Device default",
+        "note": "Whatever this device already uses. Loads nothing.",
+        "stack": ("system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', "
+                  "Roboto, 'Liberation Sans', sans-serif"),
     },
 }
 
-DEFAULT_FONT = "system"
+DEFAULT_FONT = "inter"
+
+# The font keys that existed before the faces were shipped with the portal.
+# All of them resolved to Noto Sans or Noto Serif in practice, so these map to
+# whichever real face is nearest in feel rather than dropping the setting and
+# snapping everyone back to the default without explanation.
+LEGACY_FONTS = {
+    "humanist": "inter",
+    "grotesque": "inter",
+    "rounded": "nunito",
+    "serif": "sourceserif",
+    "bookish": "sourceserif",
+    "slab": "sourceserif",
+    "mono": "jetbrainsmono",
+}
+
+
+def resolve_font(font_key):
+    if font_key in FONTS:
+        return FONTS[font_key]
+    return FONTS.get(LEGACY_FONTS.get(font_key), FONTS[DEFAULT_FONT])
+
 
 DENSITIES = {
     "comfortable": {"label": "Comfortable", "scale": "1"},
@@ -521,7 +548,7 @@ DEFAULT_DENSITY = "comfortable"
 def theme_css(theme_key, font_key, density_key):
     """Build the :root custom-property block for the chosen combination."""
     theme = THEMES.get(theme_key) or THEMES[DEFAULT_THEME]
-    font = FONTS.get(font_key) or FONTS[DEFAULT_FONT]
+    font = resolve_font(font_key)
     density = DENSITIES.get(density_key) or DENSITIES[DEFAULT_DENSITY]
 
     lines = [f"  --{name}: {value};" for name, value in theme["vars"].items()]

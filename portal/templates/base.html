@@ -7,7 +7,12 @@
   <meta name="color-scheme" content="{{ theme_mode }}">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏡</text></svg>">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
-  <style>{{ theme_style }}</style>
+  {# |safe is required, not cosmetic: autoescaping turns the quotes in a font
+     stack into &#39;, and CSS does not decode HTML entities - so every quoted
+     family name was invalid and font-family silently fell through to the
+     generic. The string is built entirely from constants in themes.py, with
+     no user input anywhere in it. #}
+  <style>{{ theme_style | safe }}</style>
   {% block head %}{% endblock %}
 </head>
 <body>
