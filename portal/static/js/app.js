@@ -437,6 +437,53 @@
     });
   });
 
+  // --- live appearance preview -------------------------------------------
+  // Applying the selection straight to :root previews the whole page, not a
+  // swatch of it - which is the only honest preview, since a theme changes
+  // every surface. Nothing is persisted; a reload returns to what is saved.
+  (function () {
+    var data = document.getElementById("lookData");
+    if (!data) return;
+
+    var look;
+    try { look = JSON.parse(data.textContent); } catch (e) { return; }
+
+    var root = document.documentElement;
+    var forms = document.querySelectorAll("form#household, form#personal");
+    if (!forms.length) return;
+
+    function apply(scope) {
+      var themeKey = scope.querySelector("input[name=theme]:checked");
+      var fontSel = scope.querySelector("select[name=font]");
+      var densitySel = scope.querySelector("select[name=density]");
+
+      var theme = themeKey && look.themes[themeKey.value];
+      if (theme) {
+        Object.keys(theme.vars).forEach(function (name) {
+          root.style.setProperty("--" + name, theme.vars[name]);
+        });
+        // data-mode drives the dark-theme card treatment, so it has to move
+        // with the colours or a dark preview keeps the light card edges.
+        root.setAttribute("data-mode", theme.mode);
+        root.setAttribute("data-theme", themeKey.value);
+      }
+      if (fontSel && look.fonts[fontSel.value]) {
+        root.style.setProperty("--font-body", look.fonts[fontSel.value]);
+      }
+      if (densitySel && look.densities[densitySel.value]) {
+        root.style.setProperty("--scale", look.densities[densitySel.value]);
+      }
+    }
+
+    forms.forEach(function (form) {
+      form.addEventListener("change", function (e) {
+        if (e.target.matches("input[name=theme], select[name=font], select[name=density]")) {
+          apply(form);
+        }
+      });
+    });
+  })();
+
   // --- auto-submit filter selects ----------------------------------------
   document.querySelectorAll("[data-autosubmit]").forEach(function (el) {
     el.addEventListener("change", function () { el.form.submit(); });

@@ -64,6 +64,16 @@ def appearance():
         settings=Setting.all_as_dict(),
         themes=THEMES,
         theme_families=themes_by_family(),
+        # Everything the live preview needs, flattened once rather than being
+        # dug back out of the nested dicts in JavaScript.
+        look_data={
+            "themes": {
+                key: {"mode": t["mode"], "vars": t["vars"]}
+                for key, t in THEMES.items()
+            },
+            "fonts": {key: f["stack"] for key, f in FONTS.items()},
+            "densities": {key: d["scale"] for key, d in DENSITIES.items()},
+        },
         fonts=FONTS,
         densities=DENSITIES,
     )

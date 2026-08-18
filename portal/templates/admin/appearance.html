@@ -107,11 +107,17 @@
         </div>
       </div>
 
-      <div class="card" style="background:var(--surface-2)">
-        <h3 style="margin-top:0">The quick brown fox</h3>
-        <p class="tiny muted" style="margin:0">
-          This card uses the theme you have applied now. Save to see a new one.
+      <div class="card" id="lookPreview" style="background:var(--surface-2)">
+        <h3 style="margin-top:0">The quick brown fox jumps over the lazy dog</h3>
+        <p class="tiny" style="margin:0 0 .5rem">
+          1234567890 · $1,284.60 · 94°F — this preview follows the selection
+          above straight away. Nothing is kept until you save.
         </p>
+        <div class="flex" style="gap:.4rem;flex-wrap:wrap">
+          <span class="pill" data-preview-pill="good">paid</span>
+          <span class="pill" data-preview-pill="warn">due soon</span>
+          <span class="pill" data-preview-pill="bad">overdue</span>
+        </div>
       </div>
     </div>
 
@@ -190,4 +196,15 @@
     </form>
   {% endif %}
 {% endif %}
+
+{#
+  The picker previews live, so it needs every theme's tokens on the page. This
+  is the same dict theme_css() builds from, serialised once - a preview that
+  had to round-trip to the server would mean saving to see a colour, which is
+  what made the "quick brown fox" card useless before.
+#}
+<script type="application/json" id="lookData">
+  {{ look_data | tojson }}
+</script>
+
 {% endblock %}
