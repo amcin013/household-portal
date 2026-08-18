@@ -1009,3 +1009,43 @@ html[data-mode="dark"] .glance .stat:hover,
 html[data-mode="dark"] .theme-swatch:hover {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
 }
+
+/* ==========================================================================
+   Machine panel - the box itself
+   --------------------------------------------------------------------------
+   A spec sheet, so it is laid out as one: a key/value column in mono on the
+   left, gauges on the right, filesystems underneath. Mono for the values
+   because they are figures and identifiers, and because this is the one place
+   in the portal that is deliberately reading like a terminal.
+   ========================================================================== */
+.machine-grid {
+  display: grid; gap: var(--gap-5);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+dl.fetch { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .3rem var(--gap-3); }
+dl.fetch dt {
+  font-family: var(--mono); font-size: .74rem; color: var(--accent);
+  font-weight: 600; white-space: nowrap;
+}
+dl.fetch dd {
+  margin: 0; font-size: .82rem; min-width: 0;
+  overflow-wrap: anywhere;
+}
+dl.fetch dd .muted { font-size: .76rem; }
+dl.fetch dd.is-busy { color: var(--warn); }
+
+.gauges { display: flex; flex-direction: column; gap: var(--gap-3); }
+.gauge .bar-track { margin: .25rem 0 .15rem; }
+
+.fs-list {
+  margin-top: var(--gap-4); padding-top: var(--gap-3);
+  border-top: 1px solid var(--card-edge);
+  display: flex; flex-direction: column; gap: .55rem;
+}
+.fs-row .bar-track { margin-top: .22rem; }
+
+@media (max-width: 900px) {
+  .machine-grid { grid-template-columns: 1fr; }
+}

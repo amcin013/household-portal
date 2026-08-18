@@ -192,6 +192,28 @@ def _glance(ctx):
     return {"tiles": tiles} if tiles else None
 
 
+def _machine(ctx):
+    """The box itself: memory, uptime, load, and every filesystem on it.
+
+    Two sources with different privilege: host stats come straight out of /proc
+    and are always current; filesystem sizes come from the root collector's
+    hourly JSON and can be stale, which the panel says rather than hides.
+    """
+    from ..services import host as host_service
+    from ..services import disks as disk_service
+
+    info = host_service.summary()
+    if not info.get("memory") and not info.get("uptime"):
+        return None  # not a Linux box, or /proc is not readable
+
+    try:
+        report = disk_service.summary()
+    except Exception:
+        report = {"available": False, "filesystems": [], "generated_at": None,
+                  "stale": False}
+    return {"host": info, "report": report}
+
+
 BUILDERS = {
     "glance": _glance,
     "weather": _weather,
@@ -205,6 +227,7 @@ BUILDERS = {
     "recipes": _recipes,
     "pages": _pages,
     "storage": _storage,
+    "machine": _machine,
     "activity": _activity,
 }
 

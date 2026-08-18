@@ -15,11 +15,11 @@
   {% endif %}
 
   {# Full-width panels first, then the card grid. #}
-  {% for panel in panels if panel.key in ('alerts', 'glance', 'radar') %}
+  {% for panel in panels if panel.key in ('alerts', 'glance', 'radar', 'machine') %}
     {% include 'dashboard/_' ~ panel.key ~ '.html' %}
   {% endfor %}
 
-  {% set grid_panels = panels | rejectattr('key', 'in', ['alerts', 'glance', 'radar']) | list %}
+  {% set grid_panels = panels | rejectattr('key', 'in', ['alerts', 'glance', 'radar', 'machine']) | list %}
   {% if grid_panels %}
     <div class="grid dash-grid">
       {% for panel in grid_panels %}

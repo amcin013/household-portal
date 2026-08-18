@@ -176,6 +176,19 @@ def current_period():
     return date.today().strftime("%Y-%m")
 
 
+def bytes_h(value):
+    """Bytes as a human size. Mirrors services.disks.human_bytes so a figure
+    read from /proc is formatted the same as one read from the disk report."""
+    if not value:
+        return "0 B"
+    size = float(value)
+    for unit in ("B", "KB", "MB", "GB", "TB", "PB"):
+        if size < 1024 or unit == "PB":
+            return f"{size:.0f} {unit}" if unit in ("B", "KB") else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} PB"
+
+
 def register_filters(app):
     app.jinja_env.filters.update(
         markdown=render_markdown,
@@ -187,4 +200,5 @@ def register_filters(app):
         humandate=humandate,
         timeago=timeago,
         month_label=month_label,
+        bytes_h=bytes_h,
     )

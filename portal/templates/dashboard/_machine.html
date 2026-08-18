@@ -1,0 +1,120 @@
+{#
+  The machine panel: a fetch-style readout of the box itself, then every
+  filesystem on it.
+
+  Laid out as a key/value column rather than as more stat tiles, because that
+  is the shape this information has - it is a spec sheet, and the tiles above
+  are already doing the "one number, big" job. Deliberately no process list.
+#}
+{% set d = panel.data %}
+{% set h = d.host %}
+<section class="card machine">
+  <div class="card-head">
+    <h2>🖥️ {{ h.hostname or 'This server' }}</h2>
+    <a class="card-link" href="{{ url_for('system.disks') }}">Storage →</a>
+  </div>
+
+  <div class="machine-grid">
+    <dl class="fetch">
+      {% if h.os %}<dt>os</dt><dd>{{ h.os }}</dd>{% endif %}
+      {% if h.kernel %}<dt>kernel</dt><dd>{{ h.kernel }}</dd>{% endif %}
+      {% if h.uptime %}<dt>uptime</dt><dd>{{ h.uptime }}</dd>{% endif %}
+      {% if h.cpu %}
+        <dt>cpu</dt>
+        <dd>{{ h.cpu.model }} <span class="muted">· {{ h.cpu.threads }} threads</span></dd>
+      {% endif %}
+      {% if h.load %}
+        <dt>load</dt>
+        <dd class="{{ 'is-busy' if h.load.busy }}">
+          {{ '%.2f'|format(h.load['1']) }}
+          <span class="muted">{{ '%.2f'|format(h.load['5']) }}
+                               {{ '%.2f'|format(h.load['15']) }}</span>
+          {% if h.load.busy %}<span class="pill pill-warn">over {{ h.load.cores }} cores</span>{% endif %}
+        </dd>
+      {% endif %}
+      {% if d.report.generated_at %}
+        <dt>disks read</dt>
+        <dd class="{{ 'is-busy' if d.report.stale }}">
+          {{ d.report.generated_at | timeago }}
+          {% if d.report.stale %}<span class="pill pill-warn">collector stopped?</span>{% endif %}
+        </dd>
+      {% endif %}
+    </dl>
+
+    {% if h.memory %}
+      <div class="gauges">
+        <div class="gauge">
+          <div class="flex-between tiny">
+            <span>Memory</span>
+            <span class="num muted">
+              {{ h.memory.used | bytes_h }} / {{ h.memory.total | bytes_h }}
+            </span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill {{ 'bar-bad' if h.memory.percent >= 90
+                                    else 'bar-warn' if h.memory.percent >= 75 }}"
+                 style="width:{{ h.memory.percent }}%"></div>
+          </div>
+          <div class="tiny muted">{{ h.memory.percent }}% used · {{ h.memory.available | bytes_h }} available</div>
+        </div>
+
+        {% if h.memory.swap_total %}
+          <div class="gauge">
+            <div class="flex-between tiny">
+              <span>Swap</span>
+              <span class="num muted">
+                {{ h.memory.swap_used | bytes_h }} / {{ h.memory.swap_total | bytes_h }}
+              </span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill {{ 'bar-warn' if h.memory.swap_percent >= 50 }}"
+                   style="width:{{ h.memory.swap_percent }}%"></div>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if h.load %}
+          <div class="gauge">
+            <div class="flex-between tiny">
+              <span>CPU load</span>
+              <span class="num muted">{{ h.load.percent }}% of {{ h.load.cores }} threads</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill {{ 'bar-bad' if h.load.percent >= 90
+                                      else 'bar-warn' if h.load.percent >= 70 }}"
+                   style="width:{{ h.load.percent }}%"></div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  {% if d.report.filesystems %}
+    <div class="fs-list">
+      {% for fs in d.report.filesystems %}
+        {% set pct = fs.use_percent or 0 %}
+        <div class="fs-row">
+          <div class="flex-between tiny">
+            <span class="truncate">
+              <b>{{ fs.mount }}</b>
+              <span class="muted">{{ fs.fstype }}{% if fs.network %} · network{% endif %}</span>
+            </span>
+            <span class="num muted nowrap">
+              {{ fs.used_h }} / {{ fs.size_h }} · {{ fs.avail_h }} free
+            </span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill {{ 'bar-bad' if pct >= 95 else 'bar-warn' if pct >= 85 }}"
+                 style="width:{{ pct }}%"></div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% elif not d.report.available %}
+    <p class="tiny muted">
+      No disk report yet — the collector has not run. Filesystem usage appears
+      once <code>disk-health.timer</code> is enabled.
+    </p>
+  {% endif %}
+</section>

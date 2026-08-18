@@ -17,6 +17,13 @@ MODULES = {
         "default": True,
         "wide": True,
     },
+    "machine": {
+        "label": "Server status",
+        "icon": "🖥️",
+        "blurb": "Memory, uptime, load and every filesystem - the whole box at a glance.",
+        "default": True,
+        "wide": True,
+    },
     "weather": {
         "label": "Weather",
         "icon": "🌤️",
@@ -98,7 +105,7 @@ MODULES = {
 # need attention, then things you look at, then things you browse.
 DEFAULT_ORDER = [
     "alerts", "glance", "weather", "bills", "obligations", "links",
-    "essentials", "recipes", "pages", "activity",
+    "essentials", "recipes", "machine", "pages", "activity",
 ]
 
 def default_layout():
