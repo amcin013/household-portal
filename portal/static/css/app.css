@@ -943,3 +943,69 @@ body.has-js .no-js-only { display: none; }
 /* inline-flex keeps the sort arrow on the same line as the label. */
 th.sortable a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; }
 th.sortable a:hover { color: var(--text); }
+
+/* ==========================================================================
+   Scrollbars - present, not loud
+   --------------------------------------------------------------------------
+   A permanent grey trough down the side of the rail is the single most dated
+   thing on the page. These stay out of the way until the pointer is over the
+   thing that scrolls, and they are drawn from the theme rather than the OS.
+   Firefox gets scrollbar-width/color; WebKit gets the pseudo-elements.
+   ========================================================================== */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+*:hover { scrollbar-color: color-mix(in srgb, var(--text) 22%, transparent) transparent; }
+
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: transparent; border-radius: 999px;
+  border: 3px solid transparent; background-clip: content-box;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text) 38%, transparent);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* The rail is the worst offender because it is tall and always visible.
+   overlay where supported so it does not steal layout width at all. */
+.sidebar { scrollbar-gutter: stable; }
+
+/* --- dark themes separate by contrast, not by shadow -------------------- */
+/* A drop shadow needs light to fall on. On a #1a1b26 ground it is invisible,
+   which is why the softened surfaces read as "nothing changed" on Tokyo Night
+   while looking right on GitHub Light. So on dark themes the card earns its
+   edge instead: the surface lifts away from the page, the hairline comes back
+   to full strength, and the shadow shrinks to a close contact shadow that
+   still seats the card without trying to glow.
+
+   <html data-mode> is stamped from the theme in base.html, so this needs no
+   per-theme rules - it applies to all eleven dark ones at once. */
+html[data-mode="dark"] {
+  --card-edge: color-mix(in srgb, var(--border) 100%, transparent);
+  --lift:
+    0 1px 1px color-mix(in srgb, #000 34%, transparent),
+    0 2px 6px -2px color-mix(in srgb, #000 40%, transparent);
+  --lift-md:
+    0 2px 3px color-mix(in srgb, #000 38%, transparent),
+    0 8px 18px -6px color-mix(in srgb, #000 50%, transparent);
+  --lift-lg:
+    0 4px 8px color-mix(in srgb, #000 42%, transparent),
+    0 18px 36px -12px color-mix(in srgb, #000 60%, transparent);
+}
+/* Raise the card off the page so the edge is doing visible work. */
+html[data-mode="dark"] .card,
+html[data-mode="dark"] .stats > .stat,
+html[data-mode="dark"] .theme-swatch {
+  background-image: linear-gradient(
+    color-mix(in srgb, #fff 3.5%, transparent),
+    color-mix(in srgb, #fff 1.5%, transparent));
+}
+html[data-mode="dark"] .glance .stat:hover,
+html[data-mode="dark"] .theme-swatch:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
