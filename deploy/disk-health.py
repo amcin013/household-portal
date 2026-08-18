@@ -78,9 +78,15 @@ def filesystems():
     #
     # Deduplicate by the backing source and keep the shallowest mount point,
     # which is the real one rather than a bind of it.
+    # The bind shows up as "/dev/sda2[/var/lib/household-portal]", so the
+    # subpath has to come off before comparing or every bind looks like its
+    # own device and the deduplication above does nothing.
+    def backing(source):
+        return re.sub(r"\[.*\]$", "", source or "")
+
     by_source = {}
     for fs in found:
-        key = fs["source"] or fs["mount"]
+        key = backing(fs["source"]) or fs["mount"]
         current = by_source.get(key)
         if current is None or len(fs["mount"]) < len(current["mount"]):
             by_source[key] = fs
