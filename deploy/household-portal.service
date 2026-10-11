@@ -24,9 +24,15 @@ WorkingDirectory=/opt/household-portal
 Environment="PATH=/opt/household-portal/.venv/bin"
 EnvironmentFile=/opt/household-portal/.env
 
+# Binds to every interface so the portal is reachable from other machines on
+# the house network. That is the normal case here: a home server on a LAN, no
+# reverse proxy. Loopback-only (127.0.0.1:8000) is the right choice ONLY when
+# nginx or Caddy sits in front - see deploy/nginx.conf.example - and the
+# symptom of getting it wrong is the portal working on the server itself and
+# refusing every other machine.
 ExecStart=/opt/household-portal/.venv/bin/gunicorn \
     --workers 3 \
-    --bind 127.0.0.1:8000 \
+    --bind 0.0.0.0:8000 \
     --timeout 60 \
     --access-logfile - \
     --error-logfile - \

@@ -7,7 +7,7 @@ from flask_login import current_user, login_required
 from ..models import (
     Account, Link, Obligation, Page, Place, Recipe, latest_updates,
 )
-from ..modules import layout_for
+from ..modules import MODULES, layout_for
 from ..services import money as money_service
 
 bp = Blueprint("dashboard", __name__)
@@ -252,7 +252,8 @@ def index():
             continue
         data = builder(shared)
         if data is not None:
-            panels.append({"key": key, "data": data})
+            panels.append({"key": key, "data": data,
+                           "wide": MODULES[key].get("wide", False)})
 
     return render_template(
         "dashboard.html",

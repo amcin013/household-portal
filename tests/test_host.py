@@ -89,6 +89,18 @@ def test_os_release_handles_unquoted_values(monkeypatch):
     assert host.os_release() == "Arch"
 
 
-def test_machine_panel_renders_on_the_home_page(auth_client):
+def test_machine_panel_renders_when_switched_on(auth_client, app):
+    """Server status is off by default - it is a server-admin readout, and on a
+    household front page it pushed the weather and the bills below it. It still
+    has to render correctly for anyone who turns it on."""
+    from portal.models import User
+    from portal.modules import save_layout
+
+    save_layout(User.query.first(), ["machine"], ["machine"])
     page = auth_client.get("/", follow_redirects=True).get_data(as_text=True)
     assert "card machine" in page
+
+
+def test_machine_panel_is_not_on_by_default(auth_client):
+    page = auth_client.get("/", follow_redirects=True).get_data(as_text=True)
+    assert "card machine" not in page

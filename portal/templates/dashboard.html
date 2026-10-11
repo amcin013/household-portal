@@ -14,16 +14,17 @@
     </header>
   {% endif %}
 
-  {# Full-width panels first, then the card grid. #}
-  {% for panel in panels if panel.key in ('alerts', 'glance', 'radar', 'machine') %}
-    {% include 'dashboard/_' ~ panel.key ~ '.html' %}
-  {% endfor %}
-
-  {% set grid_panels = panels | rejectattr('key', 'in', ['alerts', 'glance', 'radar', 'machine']) | list %}
-  {% if grid_panels %}
+  {# Everything sits in one grid, in the order you arranged it. A wide panel
+     spans the full width in place rather than being hoisted to the top -
+     hoisting meant the order you set was quietly ignored for four of them. #}
+  {% if panels %}
     <div class="grid dash-grid">
-      {% for panel in grid_panels %}
-        {% include 'dashboard/_' ~ panel.key ~ '.html' %}
+      {% for panel in panels %}
+        {% if panel.wide %}
+          <div class="span-all">{% include 'dashboard/_' ~ panel.key ~ '.html' %}</div>
+        {% else %}
+          {% include 'dashboard/_' ~ panel.key ~ '.html' %}
+        {% endif %}
       {% endfor %}
     </div>
   {% else %}

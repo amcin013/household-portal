@@ -259,6 +259,50 @@ usage per day, and the rate-versus-volume split on any change.
 
 ---
 
+## When you cannot reach it from another machine
+
+The portal answers on the server itself but every other machine times out.
+Nine times in ten the service is bound to loopback. On the server:
+
+```bash
+ss -tlnp | grep 8000
+```
+
+- `127.0.0.1:8000` — loopback only. That is the problem.
+- `0.0.0.0:8000` — bound correctly; keep reading below.
+
+To open it to the house network:
+
+```bash
+sudo systemctl edit household-portal
+```
+
+and put this in the override, blank `ExecStart=` line included — systemd needs
+the empty one to replace the original rather than add a second:
+
+```
+[Service]
+ExecStart=
+ExecStart=/opt/household-portal/.venv/bin/gunicorn --workers 3 \
+    --bind 0.0.0.0:8000 --timeout 60 \
+    --access-logfile - --error-logfile - wsgi:app
+```
+
+Then `sudo systemctl daemon-reload && sudo systemctl restart household-portal`.
+
+If it is already on `0.0.0.0` and still unreachable, work down this list:
+
+1. **Firewall** — `sudo ufw status`. If active, `sudo ufw allow 8000/tcp`.
+2. **Wrong IP.** In a VM or container the guest has its own address, which is
+   not the host's. Run `hostname -I` *on the guest* and use what it prints. If
+   the guest is NAT'd rather than bridged, no amount of binding helps — the
+   hypervisor needs a port forward, or the guest needs a bridged adapter so it
+   gets its own address on the LAN.
+3. **Check from the server first** — `curl -I http://localhost:8000/auth/login`.
+   A 200 or 302 means the app is fine and the problem is purely networking.
+
+---
+
 ## Looking after it
 
 Everything lives in one file: `instance/portal.db`.

@@ -7,8 +7,10 @@
 # For a certificate:  sudo certbot --nginx -d portal.example.com
 # Certbot rewrites this file to add the TLS bits and the redirect.
 #
-# LAN only? You can skip nginx entirely - gunicorn on 0.0.0.0:8000 is enough.
-# Change the --bind in the systemd unit and set BEHIND_PROXY=0.
+# LAN only? You can skip nginx entirely - gunicorn on 0.0.0.0:8000 is enough,
+# which is what the shipped unit does. If you DO put nginx in front, change the
+# unit's --bind back to 127.0.0.1:8000 so the app is not also exposed directly,
+# and set BEHIND_PROXY=1 in .env.
 
 server {
     listen 80;

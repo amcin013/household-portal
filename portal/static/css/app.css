@@ -1049,3 +1049,9 @@ dl.fetch dd.is-busy { color: var(--warn); }
 @media (max-width: 900px) {
   .machine-grid { grid-template-columns: 1fr; }
 }
+
+/* A wide panel spans the whole grid where it sits, rather than being lifted
+   out of the flow - that is what keeps the order you arranged on the settings
+   page true for every panel, not just the narrow ones. */
+.dash-grid > .span-all { grid-column: 1 / -1; }
+.dash-grid > .span-all > .card { margin: 0; }
