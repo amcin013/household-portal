@@ -1055,3 +1055,81 @@ dl.fetch dd.is-busy { color: var(--warn); }
    page true for every panel, not just the narrow ones. */
 .dash-grid > .span-all { grid-column: 1 / -1; }
 .dash-grid > .span-all > .card { margin: 0; }
+
+/* ==========================================================================
+   Virtual machines
+
+   A VM row is a status lamp, a name, and the buttons - read left to right in
+   that order because the first question is always "is it up". The lamp is the
+   only colour in the row: green for running, amber for a transition, red for
+   crashed, dark for off. Everything else stays monochrome so a glance at a
+   list of eight machines picks out the one that is wrong.
+   ========================================================================== */
+.vm-list { display: flex; flex-direction: column; }
+
+/* Fixed tracks, not auto. Each row is its own grid, so auto tracks would size
+   to that row's own content and the numbers would stagger down the page - the
+   exact thing a readout like this exists to prevent. */
+.vm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 16rem;
+  align-items: center; gap: var(--gap-4);
+  padding: .6rem 0;
+}
+.vm-row.is-compact { grid-template-columns: minmax(0, 1fr) auto; gap: var(--gap-3); }
+.vm-row + .vm-row { border-top: 1px solid var(--card-edge); }
+
+.vm-id { display: flex; align-items: center; gap: var(--gap-2); min-width: 0; }
+.vm-id .vm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The state label gives up its space before the name does: which machine
+   it is matters more than spelling out RUNNING next to a green lamp. */
+.vm-id .vm-state { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.vm-name { font-weight: 600; text-decoration: none; color: var(--text); }
+.vm-name:hover { color: var(--accent); }
+.vm-state {
+  font-size: var(--legend); text-transform: uppercase;
+  letter-spacing: var(--track); color: var(--text-dim);
+}
+
+/* 9px rather than a glyph: a lamp reads as a state, an emoji reads as
+   decoration, and this has to survive being scanned in a hurry. */
+.vm-lamp {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--text-dim); opacity: .45;
+}
+.vm-running  { background: var(--good);  opacity: 1;
+               box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 22%, transparent); }
+.vm-blocked  { background: var(--good);  opacity: 1; }
+.vm-paused,
+.vm-shutdown,
+.vm-suspended { background: var(--warn); opacity: 1; }
+.vm-crashed  { background: var(--bad);   opacity: 1;
+               box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 22%, transparent); }
+
+.vm-stats {
+  display: grid; margin: 0; align-items: baseline;
+  grid-template-columns: 3rem 2.5rem 5.6rem 8.5rem 6rem 4.5rem;
+  column-gap: .45rem;
+}
+.vm-stats dt {
+  font-size: var(--legend); text-transform: uppercase;
+  letter-spacing: var(--track); color: var(--text-dim);
+}
+/* The values are right-aligned, so without this a number sits shoulder to
+   shoulder with the NEXT label and reads as belonging to it. */
+.vm-stats dt:not(:first-of-type) { padding-left: 1.2rem; }
+.vm-stats dd { margin: 0; font-size: .84rem; text-align: right; }
+
+.vm-actions { display: flex; gap: var(--gap-2); flex-wrap: wrap; justify-content: flex-end; }
+.vm-actions form { margin: 0; }
+
+.inline-form { display: inline; margin-left: var(--gap-2); }
+
+@media (max-width: 760px) {
+  .vm-row { grid-template-columns: 1fr; gap: var(--gap-2); }
+  .vm-actions { justify-content: flex-start; }
+  .vm-stats { flex-wrap: wrap; }
+}
+
+/* Hints wrap to a readable measure instead of running the full width. */
+.vm-form .hint { max-width: 74ch; }

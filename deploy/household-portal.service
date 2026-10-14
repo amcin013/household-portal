@@ -21,7 +21,17 @@ User=portal
 Group=portal
 
 WorkingDirectory=/opt/household-portal
-Environment="PATH=/opt/household-portal/.venv/bin"
+
+# /usr/bin and /bin are on the path because the VM page shells out to virsh
+# and ssh. A venv-only PATH makes the portal report "virsh is not installed"
+# on a box where it plainly is.
+Environment="PATH=/opt/household-portal/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+# ssh looks in $HOME for the key and known_hosts it needs to reach a remote
+# hypervisor, and systemd does not set one. Without this a qemu+ssh:// URI
+# fails with a bare "Permission denied" that reads like a libvirt problem.
+Environment="HOME=/opt/household-portal"
+
 EnvironmentFile=/opt/household-portal/.env
 
 # Binds to every interface so the portal is reachable from other machines on
@@ -41,8 +51,10 @@ ExecStart=/opt/household-portal/.venv/bin/gunicorn \
 Restart=always
 RestartSec=5
 
-# The database and instance folder are the only things it needs to write to.
+# The database, and - if the VM page talks to a remote hypervisor - the ssh
+# control socket. Nothing else needs writing to.
 ReadWritePaths=/opt/household-portal/instance
+ReadWritePaths=-/opt/household-portal/.ssh
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

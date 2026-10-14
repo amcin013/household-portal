@@ -1,0 +1,26 @@
+{#
+  Virtual machines on the home page: the ones with power buttons, nothing
+  else. Compact rows - the point of this panel is "is Home Assistant up, and
+  can I restart it from here", not a hypervisor console.
+#}
+{% from "machines/_card.html" import vm_row %}
+{% set d = panel.data %}
+<section class="card vms">
+  <div class="card-head">
+    <h2>🖥️ Virtual machines</h2>
+    <a class="card-link" href="{{ url_for('machines.index') }}">All machines →</a>
+  </div>
+
+  {% if d.error %}
+    <p class="tiny muted">Cannot reach the hypervisor — {{ d.error }}</p>
+  {% elif d.domains %}
+    <div class="vm-list">
+      {% for vm in d.domains %}{{ vm_row(vm, compact=True) }}{% endfor %}
+    </div>
+  {% else %}
+    <p class="tiny muted">
+      No machine has been named yet.
+      <a href="{{ url_for('machines.settings') }}">Pick which ones belong here.</a>
+    </p>
+  {% endif %}
+</section>

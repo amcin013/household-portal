@@ -43,8 +43,9 @@
     {{ item('money.import_sheet', 'Import & export') }}
   {% endcall %}
 
-  {% call group('House', ['places', 'system', 'links']) %}
+  {% call group('House', ['places', 'system', 'links', 'machines']) %}
     {{ item('places.index', 'Places', match='places.') }}
+    {{ item('machines.index', 'Virtual machines', match='machines.') }}
     {{ item('system.disks', 'Storage') }}
     {{ item('links.index', 'Links', match='links.') }}
   {% endcall %}

@@ -42,8 +42,8 @@ def create_app(config_object=Config):
     auth.init_oauth(app)
 
     from .views import (
-        admin, dashboard, docs, links, money, obligations, places, recipes,
-        search, system,
+        admin, dashboard, docs, links, machines, money, obligations, places,
+        recipes, search, system,
     )
 
     app.register_blueprint(auth.bp)
@@ -57,6 +57,7 @@ def create_app(config_object=Config):
     app.register_blueprint(search.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(system.bp)
+    app.register_blueprint(machines.bp)
 
     register_context(app)
     register_errors(app)

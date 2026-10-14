@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Virtual machines · Settings · {{ site_name }}{% endblock %}
+
+{% block breadcrumb %}
+  <a class="crumb" href="{{ url_for('machines.index') }}">← Virtual machines</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Virtual machines</h1>
+    <p>What the portal may see, and what it may switch off</p>
+  </div>
+</div>
+
+{% if not installed %}
+  <div class="alert-banner mb">
+    <strong><code>virsh</code> is not installed on this machine.</strong>
+    <span class="muted">Install <code>libvirt-clients</code> before any of this will work.</span>
+  </div>
+{% endif %}
+
+<form method="post" class="card mb vm-form">
+  {{ csrf_field() }}
+
+  <label class="check">
+    <input type="checkbox" name="enabled" {{ 'checked' if settings.vm_enabled == '1' }}>
+    <span>Show virtual machines in the portal</span>
+  </label>
+
+  <div class="field">
+    <label for="uri">libvirt connection</label>
+    <input type="text" id="uri" name="uri" class="mono"
+           value="{{ settings.vm_uri or default_uri }}"
+           placeholder="{{ default_uri }}">
+    <p class="hint">
+      <code>qemu:///system</code> if the portal runs on the hypervisor itself.
+      It usually does not — it is a guest — so the normal answer here is
+      <code>qemu+ssh://root@192.168.50.178/system</code>, and the portal's
+      user needs an SSH key the hypervisor accepts. The README has the steps.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="vm_controllable">Machines with power buttons</label>
+    <input type="text" id="vm_controllable" name="vm_controllable" class="mono"
+           value="{{ settings.vm_controllable or '' }}"
+           placeholder="torrentbox, home-assistant">
+    <p class="hint">
+      Comma separated, and matched against the domain name libvirt uses.
+      Everything else on the hypervisor is listed but cannot be touched.
+      Leave it empty and the whole page is read-only.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="vm_protected">Machines that must never be stopped</label>
+    <input type="text" id="vm_protected" name="vm_protected" class="mono"
+           value="{{ settings.vm_protected or '' }}"
+           placeholder="portal">
+    <p class="hint">
+      These can be started but not shut down, rebooted or forced off. Put the
+      VM the portal itself runs in here — otherwise someone can switch off the
+      page they are standing on.
+    </p>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">Save</button>
+  </div>
+</form>
+
+<section class="card">
+  <div class="card-head"><h2>What the hypervisor reports</h2></div>
+  {% if error %}
+    <p class="muted">{{ error }}</p>
+  {% elif found %}
+    <p class="hint">Copy a name from here into the boxes above.</p>
+    <ul class="list">
+      {% for d in found %}
+        <li class="list-row flex-between">
+          <span class="mono">{{ d.name }}</span>
+          <span class="tiny muted">{{ d.state_label }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">
+      Nothing yet — switch it on and save, and the machines appear here.
+    </p>
+  {% endif %}
+</section>
+{% endblock %}

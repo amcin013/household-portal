@@ -86,6 +86,12 @@ MODULES = {
         "blurb": "Pages you pinned.",
         "default": True,
     },
+    "machines": {
+        "label": "Virtual machines",
+        "icon": "🖳",
+        "blurb": "Is Home Assistant up? Start, stop and reboot the VMs you named.",
+        "default": False,
+    },
     "storage": {
         "label": "Storage",
         "icon": "💾",

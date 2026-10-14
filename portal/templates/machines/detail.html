@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "machines/_card.html" import vm_row %}
+{% block title %}{{ name }} · {{ site_name }}{% endblock %}
+
+{% block breadcrumb %}
+  <a class="crumb" href="{{ url_for('machines.index') }}">← Virtual machines</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ name }}</h1>
+    <p>{% if domain %}{{ domain.state_label }}{% else %}Unreachable{% endif %}</p>
+  </div>
+</div>
+
+{% if error %}
+  <div class="alert-banner mb">
+    <strong>Cannot reach the hypervisor.</strong> <span class="muted">{{ error }}</span>
+  </div>
+{% endif %}
+
+{% if domain %}
+  <div class="card mb">
+    <div class="vm-list">{{ vm_row(domain, compact=True, back='detail') }}</div>
+  </div>
+
+  <div class="grid grid-2">
+    <section class="card">
+      <div class="card-head"><h2>Machine</h2></div>
+      <dl class="fetch">
+        <dt>state</dt><dd>{{ domain.state_label }}</dd>
+        <dt>vcpu</dt><dd class="num">{{ domain.vcpus or '—' }}</dd>
+        <dt>memory</dt>
+        <dd class="num">
+          {%- if domain.memory %}{{ domain.memory | bytes_h }}{% else %}—{% endif -%}
+          {%- if domain.memory_max %} <span class="muted">of {{ domain.memory_max | bytes_h }}</span>{% endif -%}
+        </dd>
+        {% if domain.memory_host %}
+          <dt>on the host</dt><dd class="num">{{ domain.memory_host | bytes_h }}</dd>
+        {% endif %}
+        {% if info and info.os %}<dt>os type</dt><dd>{{ info.os }}</dd>{% endif %}
+        {% if info and info.uuid %}<dt>uuid</dt><dd class="num tiny">{{ info.uuid }}</dd>{% endif %}
+        {% if info and info.autostart is not none %}
+          <dt>with the host</dt>
+          <dd>
+            {{ 'Starts automatically' if info.autostart else 'Stays off' }}
+            {% if domain.controllable %}
+              <form method="post" action="{{ url_for('machines.action', name=name) }}" class="inline-form">
+                {{ csrf_field() }}
+                <input type="hidden" name="back" value="detail">
+                <input type="hidden" name="action"
+                       value="{{ 'noautostart' if info.autostart else 'autostart' }}">
+                <button class="btn btn-sm" type="submit">
+                  {{ 'Turn off' if info.autostart else 'Turn on' }}
+                </button>
+              </form>
+            {% endif %}
+          </dd>
+        {% endif %}
+      </dl>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Network</h2></div>
+      {% if info and info.addresses %}
+        <ul class="list">
+          {% for a in info.addresses %}
+            <li class="list-row flex-between">
+              <span class="num">{{ a.address }}</span>
+              <span class="tiny muted">{{ a.interface }} · {{ a.mac }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="tiny muted">
+          No address to report. libvirt only knows a guest's address if it
+          handed out the lease itself or the guest agent is installed — a VM
+          on a bridge with the house DHCP server is invisible to it, and that
+          is normal.
+        </p>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if info and info.disks %}
+    <section class="card mt">
+      <div class="card-head"><h2>Disks</h2></div>
+      <ul class="list">
+        {% for disk in info.disks %}
+          <li class="list-row flex-between">
+            <span><strong>{{ disk.target }}</strong> <span class="muted tiny">{{ disk.device }}</span></span>
+            <span class="tiny muted truncate">{{ disk.source }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="tiny muted">
+        Listed only. The portal cannot add, resize or delete a disk — that
+        stays in virsh and Cockpit on purpose.
+      </p>
+    </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

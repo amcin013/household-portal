@@ -214,6 +214,27 @@ def _machine(ctx):
     return {"host": info, "report": report}
 
 
+def _machines(ctx):
+    """The VMs with power buttons on them, and nothing else.
+
+    Hidden entirely when the feature is switched off, so a household that does
+    not run a hypervisor never sees an empty panel asking to be configured.
+    """
+    from ..services import machines as vm_service
+
+    summary = vm_service.summary()
+    if summary is None:
+        return None
+    # An unreachable hypervisor is worth showing - it is the one state you want
+    # to know about without going looking - but only once it has been set up.
+    if not summary["domains"] and not summary["configured"]:
+        return None
+    summary["domains"] = [
+        {**d, "actions": vm_service.actions_for(d)} for d in summary["domains"]
+    ]
+    return summary
+
+
 BUILDERS = {
     "glance": _glance,
     "weather": _weather,
@@ -228,6 +249,7 @@ BUILDERS = {
     "pages": _pages,
     "storage": _storage,
     "machine": _machine,
+    "machines": _machines,
     "activity": _activity,
 }
 

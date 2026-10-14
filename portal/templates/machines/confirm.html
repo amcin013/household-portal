@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Force off {{ domain.name }}? · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div><h1>Force off {{ domain.name }}?</h1></div>
+</div>
+
+<div class="card">
+  <p>
+    This is the equivalent of pulling the power cord. The guest gets no
+    warning, anything it had not written to disk is lost, and the filesystem
+    inside it may need a repair on the next boot.
+  </p>
+  <p class="muted">
+    <strong>Shut down</strong> asks the guest to stop properly and is almost
+    always what you want. Force off is for a machine that has stopped
+    answering.
+  </p>
+
+  <div class="form-actions">
+    <form method="post" action="{{ url_for('machines.action', name=domain.name) }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="action" value="{{ action }}">
+      <input type="hidden" name="confirm" value="yes">
+      <input type="hidden" name="back" value="detail">
+      <button class="btn btn-danger" type="submit">Yes, force {{ domain.name }} off</button>
+    </form>
+    <a class="btn" href="{{ url_for('machines.detail', name=domain.name) }}">Cancel</a>
+  </div>
+</div>
+{% endblock %}

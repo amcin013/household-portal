@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "machines/_card.html" import vm_row %}
+{% block title %}Virtual machines · {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Virtual machines</h1>
+    <p>{% if enabled %}{{ uri }}{% else %}Not switched on yet{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    {% if enabled %}
+      <a class="btn btn-sm" href="{{ url_for('machines.index', refresh=1) }}">Refresh</a>
+    {% endif %}
+    {% if current_user.is_admin %}
+      <a class="btn btn-sm" href="{{ url_for('machines.settings') }}">Settings</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not enabled %}
+  <div class="card">
+    <div class="card-head"><h2>Switched off</h2></div>
+    <p class="muted">
+      The portal can start and stop the machines on your hypervisor the same
+      way Cockpit does — it talks to the same libvirt underneath, so a VM
+      started here and one started in Cockpit are the same thing.
+    </p>
+    {% if current_user.is_admin %}
+      <p><a class="btn" href="{{ url_for('machines.settings') }}">Set it up</a></p>
+    {% else %}
+      <p class="tiny muted">An admin can switch it on in Settings.</p>
+    {% endif %}
+  </div>
+
+{% elif not installed %}
+  <div class="card">
+    <div class="card-head"><h2>virsh is not installed here</h2></div>
+    <p class="muted">
+      The portal drives libvirt through <code>virsh</code>, which this machine
+      does not have. On Debian or Ubuntu:
+    </p>
+    <pre>sudo apt install libvirt-clients</pre>
+    <p class="tiny muted">
+      The portal does not need libvirt itself — only the client, because the
+      hypervisor is usually a different box.
+    </p>
+  </div>
+
+{% else %}
+  {% if error %}
+    <div class="alert-banner mb">
+      <strong>Cannot reach the hypervisor.</strong>
+      <span class="muted">{{ error }}</span>
+    </div>
+  {% endif %}
+
+  {% if not controllable %}
+    <div class="card mb">
+      <p class="tiny muted">
+        No machine is in the controllable list, so everything below is
+        read-only. That is the safe default — name the ones you want power
+        buttons for in <a href="{{ url_for('machines.settings') }}">Settings</a>.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if domains %}
+    <div class="card">
+      <div class="card-head"><h2>{{ domains | length }} machine{{ '' if domains|length == 1 else 's' }}</h2></div>
+      <div class="vm-list">
+        {% for d in domains %}{{ vm_row(d) }}{% endfor %}
+      </div>
+    </div>
+  {% elif not error %}
+    <div class="card">
+      <p class="muted">The hypervisor answered, but has no machines defined.</p>
+    </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

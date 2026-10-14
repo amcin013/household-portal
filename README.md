@@ -66,6 +66,12 @@ revision history. Nothing is ever overwritten for good.
 cleanly: the set someone would need to keep the house running if you were not
 around.
 
+**Virtual machines** — start, shut down and reboot the VMs on your hypervisor
+without opening another tool. It drives libvirt, the same thing Cockpit drives,
+so a machine started here and one started in Cockpit are the same operation.
+Off by default; see *Virtual machines* below for the setup and for what it
+deliberately cannot do.
+
 **Appearance** — eight themes, eight font choices, three text sizes. Everyone
 can pick their own look, or follow the household default.
 
@@ -78,7 +84,7 @@ lives:
 
 - **Money** — This month, Bills & companies, Usage & meters, Accounts,
   Obligations, Trends & forecast, Import & export
-- **House** — Places, Storage, Links
+- **House** — Places, Virtual machines, Storage, Links
 - **Kitchen** — Recipes, Shopping list
 - **Reference** — How-to & info, Essentials
 
@@ -256,6 +262,100 @@ badly wrong figure.
 Set what a company is metered in on its page (kWh, ccf, therms, gallons) and
 each bill can then carry a reading, giving you rate over time, usage over time,
 usage per day, and the rate-versus-volume split on any change.
+
+---
+
+## Virtual machines
+
+The portal can show the VMs on your hypervisor and press their power buttons.
+It does this through **libvirt**, which is what Cockpit uses, so nothing here
+is a second source of truth — start `home-assistant` from the portal and
+Cockpit will show it running a second later.
+
+### What it can and cannot do
+
+| It can | It will not |
+| --- | --- |
+| List every domain with state, vCPU and memory | Define or delete a machine |
+| Start, shut down, reboot | Edit XML, add or resize a disk |
+| Force off, behind a confirmation page | Create, delete or revert a snapshot |
+| Turn "start with the host" on and off | Open a graphical console |
+| Show leased IP addresses and attached disks | Touch the host's storage pools |
+
+The right-hand column is not a to-do list. This is a household portal that
+someone else may be using in an emergency, so the only verbs it has are the
+ones on the front of a computer case. Everything destructive stays in virsh
+and Cockpit, where you have to mean it.
+
+### Setting it up
+
+1. Install the libvirt **client** on the machine the portal runs on. Not
+   libvirt itself — the hypervisor is usually a different box.
+
+   ```bash
+   sudo apt install libvirt-clients
+   ```
+
+2. Decide how the portal reaches the hypervisor.
+
+   **The portal runs on the hypervisor.** Use `qemu:///system`, and put the
+   portal's user in the `libvirt` group so it can open the socket:
+
+   ```bash
+   sudo usermod -aG libvirt portal
+   sudo systemctl restart household-portal
+   ```
+
+   **The portal runs in a guest** (the normal case — it is a VM itself). Use
+   `qemu+ssh://root@192.168.50.178/system` and give the portal's user a key
+   the hypervisor accepts:
+
+   ```bash
+   sudo -u portal ssh-keygen -t ed25519 -f /opt/household-portal/.ssh/id_ed25519 -N ''
+   sudo -u portal ssh-copy-id -i /opt/household-portal/.ssh/id_ed25519 root@192.168.50.178
+   # prove it works before asking the portal to do it:
+   sudo -u portal virsh -c qemu+ssh://root@192.168.50.178/system list --all
+   ```
+
+   That last command is the whole test. If it prints your machines, the portal
+   will too; if it asks for a password or a host key, fix that first — the
+   portal has no way to answer a prompt and will simply time out.
+
+   Every read over ssh costs a connection, so it is worth reusing one:
+
+   ```
+   # /opt/household-portal/.ssh/config
+   Host 192.168.50.178
+       ControlMaster auto
+       ControlPath ~/.ssh/cm-%r@%h:%p
+       ControlPersist 10m
+   ```
+
+3. In the portal, go to **House → Virtual machines → Settings** and fill in:
+
+   - **libvirt connection** — the URI from step 2.
+   - **Machines with power buttons** — `torrentbox, home-assistant`. Anything
+     not named here is listed but cannot be touched. Leave it empty and the
+     whole page is read-only, which is the default.
+   - **Machines that must never be stopped** — put the VM the portal itself
+     runs in here. It can still be started, never shut down. Without this,
+     someone can switch off the page they are standing on and then has to walk
+     to the hypervisor.
+
+4. Optional: turn the **Virtual machines** panel on under Settings → Home page.
+   The panel offers one button per machine — Start when it is off, Shut down
+   when it is up. Reboot and force-off are a deliberate trip to the full page.
+
+**Who can press the buttons:** anyone signed in, the same as the rest of the
+portal. Only an admin can change the settings above — which machines appear,
+and which may be stopped. That is the line: an admin decides what is reachable,
+and anyone in the house can restart Home Assistant at two in the morning
+without needing you.
+
+The systemd unit sets `HOME=/opt/household-portal` so ssh can find that key and
+config. If you run the portal some other way, set it yourself or the remote URI
+will fail with a bare "Permission denied" that looks like a libvirt problem and
+is not.
 
 ---
 

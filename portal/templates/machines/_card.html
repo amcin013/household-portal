@@ -1,0 +1,58 @@
+{#
+  One machine, as a row: name, state, what it is using, and its buttons.
+
+  Shared by the Machines page and the home-page panel so a VM looks and
+  behaves the same in both places. `compact` drops the resource numbers for
+  the panel, where the row has a third of the width.
+#}
+{% macro vm_row(d, compact=False, back='index') %}
+<div class="vm-row {{ 'is-on' if d.running }} {{ 'is-compact' if compact }}">
+  <div class="vm-id">
+    <span class="vm-lamp vm-{{ d.state }}" aria-hidden="true"></span>
+    <a class="vm-name" href="{{ url_for('machines.detail', name=d.name) }}">{{ d.name }}</a>
+    <span class="vm-state">{{ d.state_label }}</span>
+    {# One label, not two: a machine that is already read-only gains nothing
+       from also being told it is protected. #}
+    {% if not d.controllable %}
+      <span class="pill" title="Not in the controllable list">read-only</span>
+    {% elif d.protected %}
+      <span class="pill" title="Can be started, never stopped">protected</span>
+    {% endif %}
+  </div>
+
+  {% if not compact %}
+    <dl class="vm-stats">
+      <dt>vcpu</dt><dd class="num">{{ d.vcpus or '—' }}</dd>
+      <dt>memory</dt>
+      <dd class="num">
+        {%- if d.memory %}{{ d.memory | bytes_h }}{% if d.memory_max %} / {{ d.memory_max | bytes_h }}{% endif %}
+        {%- else %}—{% endif -%}
+      </dd>
+      <dt>cpu time</dt>
+      <dd class="num">{% if d.cpu_seconds %}{{ '%.0f'|format(d.cpu_seconds) }}s{% else %}—{% endif %}</dd>
+    </dl>
+  {% endif %}
+
+  {# On the home page only the first action is offered - the one the state
+     makes obvious, Start when it is off and Shut down when it is up. Reboot
+     and Force off are a deliberate trip to the Machines page: a front page
+     is somewhere you glance, not somewhere you should be able to pull a
+     machine's power cord by accident. #}
+  {% set shown = d.actions[:1] if compact else d.actions %}
+  <div class="vm-actions">
+    {% if shown %}
+      {% for a in shown %}
+        <form method="post" action="{{ url_for('machines.action', name=d.name) }}">
+          {{ csrf_field() }}
+          <input type="hidden" name="action" value="{{ a.key }}">
+          <input type="hidden" name="back" value="{{ back }}">
+          <button class="btn btn-sm {{ 'btn-danger' if a.key == 'forceoff' }}"
+                  type="submit">{{ a.label }}</button>
+        </form>
+      {% endfor %}
+    {% elif d.controllable and not compact %}
+      <span class="tiny muted">Nothing to press from here</span>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
